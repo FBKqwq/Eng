@@ -161,6 +161,16 @@ api_router.include_router(system_router, prefix="/v1/system", tags=["system"])
 3. 前端：`npm install` / `npm run dev`（参见 `frontend/README.md`）。
 4. 可选：在 `backend` 目录执行 `python -m app.tasks.run_log_producer`（或等价模块路径）持续向 Kafka 写模拟日志。
 
+## How to re-execute the setup
+
+若在首次启动栈时未完成 Elasticsearch 用户与角色初始化，或需要将现有内置用户密码重置为 `location/.env` 中的取值，请在 **`location` 目录**下重新执行 `setup` 服务，例如：
+
+```console
+docker compose --profile=setup up setup
+```
+
+`setup` 服务位于 Compose 的 `setup` profile 中，默认不会随 `docker compose up -d` 自动启动；与首次初始化相同，再次运行会重置已有用户密码及内置角色默认权限。详见 `docker-compose.yml` 中对 `setup` 服务的说明。
+
 ---
 
 ## 6. API 与前端页面对照
