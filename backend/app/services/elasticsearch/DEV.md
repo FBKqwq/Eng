@@ -15,9 +15,10 @@
 
 ## 4. 已实现功能清单
 - 已有 ES 客户端与日志查询服务文件。
+- `get_es_client()`：在配置非空密码时通过 `basic_auth` 连接 ES，兼容无安全认证的本地开发。
 
 ## 5. 待开发功能清单（P0-P3）
-- P0：确认查询链路真实可用并处理连接异常。
+- P0：确认查询链路真实可用并处理连接异常（含启用安全认证时的账号配置）。
 - P1：补齐聚合查询与时间窗口统计能力。
 - P2：统一查询参数映射与分页排序策略。
 - P3：缓存热门查询与慢查询诊断能力。
@@ -25,7 +26,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Elasticsearch Service | 可用但需完善 | 2026-05-14 | codex | 中 | 基础查询能力在位，健壮性待增强 |
+| Elasticsearch Service | 稳定可用 | 2026-05-14 | codex | 低 | cluster health 与后续真实查询共用带认证的客户端 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -50,7 +51,7 @@
 
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 | --- | --- | --- | --- | --- | --- |
-| Elasticsearch Service | 可用但需完善 | 2026-05-14 | codex | 中 | 已补充只读 cluster health 探测，不影响日志查询服务 |
+| Elasticsearch Service | 稳定可用 | 2026-05-14 | codex | 低 | cluster health 与后续真实查询共用带认证的客户端 |
 
 ### 已实现功能清单更新
 
@@ -62,4 +63,6 @@
 | 时间 | 修改内容 | 涉及文件 | 当前结果 | 遗留问题 |
 | --- | --- | --- | --- | --- |
 | 2026-05-13 | 新增 ES 集群健康快照 | `app/services/elasticsearch/cluster_status.py`、`app/schemas/system.py` | `/system/status` 可展示 `cluster_status`（green/yellow/red/unknown）、节点、分片与文档计数 | 依赖 Elasticsearch 服务真实可访问 |
+| 2026-05-14 | ES 客户端增加 `basic_auth`（用户名/密码来自 `Settings` 与环境变量回退） | `app/services/elasticsearch/client.py` | 监控页 cluster health 在 ES 启用安全时可正常拉取 | 无 |
 | 2026-05-14 | 日志查询服务入参类型与 schema 对齐 | `app/services/elasticsearch/log_query_service.py` | `search_logs` 使用 `LogQueryRequest`，消除错误导入 | 无 |
+| 2026-05-14 | `get_es_client` 对账号密码去外层引号并统一 env 回退顺序 | `app/services/elasticsearch/client.py` | 修复 `.env` 中 `ELASTICSEARCH_PASSWORD='changeme'` 导致全链路脚本 ES 检索始终为空 | 无 |

@@ -48,3 +48,5 @@
 | 时间 | 修改内容 | 涉及文件 | 当前结果 | 遗留问题 |
 | --- | --- | --- | --- | --- |
 | 2026-05-13 | 增强系统配置快照探测服务 | `app/services/elasticsearch/cluster_status.py`、`app/services/kafka/cluster_status.py` | 为 `/system/status` 提供 ES cluster health 与 Kafka topic/broker 只读探测 | 已通过 compileall 与 TestClient 验证 |
+| 2026-05-14 | 日志生成与 Kafka 生产落地 | `simulation/log_generator.py`、`kafka/producer.py`、`kafka/topic_setup.py`、`tasks/run_log_producer.py` | 结构化日志写入 Kafka，任务启动预建 topic | Logstash Kafka input 待配置 |
+| 2026-05-14 | 任务层增加 Kafka 消费侧自证脚本 | `tasks/verify_log_kafka_pipeline.py` | 内置 consumer 校验 log_id 闭环 | 与 Logstash 无关，仅 broker 内验证 |

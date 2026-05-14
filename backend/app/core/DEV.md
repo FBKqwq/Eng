@@ -14,6 +14,7 @@
 
 ## 4. 已实现功能清单
 - 已提供 `Settings` 与单例 `settings`，支持 `.env` 加载与 `extra="ignore"`。
+- Elasticsearch 可选认证：`elasticsearch_username`、`elasticsearch_password`；密码字段兼容环境变量 `ELASTICSEARCH_PASSWORD` 与 `ELASTIC_PASSWORD`。
 
 ## 5. 待开发功能清单（P0-P3）
 - P0：为生产环境补充必填项校验（如 ES/Kafka 地址非空告警）。
@@ -24,7 +25,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Core | 稳定可用 | 2026-05-14 | codex | 低 | 已恢复 Docker 监控配置项，配置项随业务增长需持续收敛命名 |
+| Core | 稳定可用 | 2026-05-14 | codex | 低 | 含 ES 安全认证相关配置项，敏感值仅走环境注入 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -41,6 +42,7 @@
 |---|---|---|---|---|
 | 2026-05-11 | 初始化 Core 模块 DEV 文档 | `app/core/DEV.md` | 建立配置模块维护基线 | 待新增 `core` 子文件时更新模块总览 |
 | 2026-05-14 | 恢复被基础版本覆盖的 Docker 监控配置项 | `app/core/config.py` | `docker_project_name`、`docker_monitored_services` 重新可供系统状态接口读取 | 需重启后端进程后生效 |
+| 2026-05-14 | 增加 Elasticsearch 用户名/密码配置项 | `app/core/config.py` | 与 `get_es_client` 的 `basic_auth` 对齐，兼容 `ELASTIC_PASSWORD` | 密钥不入库、不写入代码 |
 
 ## 2026-05-13 补充：Docker 监控配置
 
@@ -60,3 +62,13 @@
 | `docker_monitored_services` | `kafka,elasticsearch,logstash,kibana,setup` | 开发者监控页需要展示的服务列表 |
 
 配置只影响后端状态查询范围，不负责启动、停止或编排容器。
+
+## 2026-05-14 补充：Elasticsearch 安全认证配置
+
+| 配置项 / 环境变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `elasticsearch_username` / `ELASTICSEARCH_USERNAME` | `elastic` | ES 启用安全时与密码一起用于客户端 `basic_auth` |
+| `elasticsearch_password` / `ELASTICSEARCH_PASSWORD` | 空 | 非空时所有经 `get_es_client()` 的请求携带 Basic 认证 |
+| `ELASTIC_PASSWORD` | — | 与 `ELASTICSEARCH_PASSWORD` 等价别名，便于与 Compose 对齐 |
+
+说明：`app/services/elasticsearch/client.py` 在密码非空时优先采用进程环境中已设置的 `ELASTICSEARCH_*` / `ELASTIC_PASSWORD`（便于 task 在 import 之后 `load_dotenv`），否则使用 `Settings` 已加载字段。
