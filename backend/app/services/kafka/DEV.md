@@ -6,7 +6,9 @@
 ## 2. 项目模块总览
 | 文件 | 主要职责 |
 |---|---|
-| `app/services/kafka/producer.py` | 生产日志消息到 Kafka Topic |
+| `app/services/kafka/producer.py` | 生产日志消息到 Kafka Topic，支持复用 Producer 与 topic 覆盖 |
+| `app/services/kafka/topic_setup.py` | 启动前预建配置中的业务 topic（与 compose 单副本环境默认 RF=1 对齐） |
+| `app/services/kafka/cluster_status.py` | 只读 AdminClient 状态快照，供系统状态接口使用 |
 
 ## 3. 模块职责边界
 - 应该放在这里：Kafka Producer 封装、发送重试策略、消息结构适配。
@@ -14,17 +16,19 @@
 
 ## 4. 已实现功能清单
 - 已有 Kafka producer 服务文件。
+- `send_log_message` 支持传入复用 `KafkaProducer`、可选 `topic` 覆盖；失败时抛出带 bootstrap/topic 信息的 `RuntimeError`。
+- `ensure_configured_topic()`：在 broker 可达时确保 `settings.kafka_topic` 存在（默认 3 分区、副本因子 1）。
 
 ## 5. 待开发功能清单（P0-P3）
-- P0：确认生产链路可连通并补充失败处理。
-- P1：补齐 topic 管理与发送指标统计。
-- P2：支持批量发送与更细粒度重试配置。
+- P0：与 Logstash Kafka input 接通后做端到端发送抽样验证。
+- P1：发送指标统计与更细粒度重试/退避策略。
+- P2：支持批量发送与吞吐优化。
 - P3：引入可观测性埋点与告警钩子。
 
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Kafka Service | 可用但需完善 | 2026-05-06 | codex | 中 | 文件已存在，需持续验证真实链路 |
+| Kafka Service | 可用但需完善 | 2026-05-14 | codex | 中 | topic 预建、producer 复用与快照探测并存；待 Logstash 消费验证 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -47,7 +51,7 @@
 
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 | --- | --- | --- | --- | --- | --- |
-| Kafka Service | 可用但需完善 | 2026-05-13 | codex | 中 | 已补充只读 AdminClient 探测，不影响 producer 发送服务 |
+| Kafka Service | 可用但需完善 | 2026-05-14 | codex | 中 | 已补充 topic 预建与 producer 复用发送；待 Logstash 侧消费验证 |
 
 ### 已实现功能清单更新
 
@@ -59,3 +63,4 @@
 | 时间 | 修改内容 | 涉及文件 | 当前结果 | 遗留问题 |
 | --- | --- | --- | --- | --- |
 | 2026-05-13 | 新增 Kafka 状态快照 | `app/services/kafka/cluster_status.py`、`app/schemas/system.py` | `/system/status` 可展示 Kafka broker/topic 数量、配置 topic 是否存在、分区数和副本数 | 依赖 Kafka broker 真实可访问 |
+| 2026-05-14 | 日志生产落地：topic 预建、producer 复用与发送错误信息 | `topic_setup.py`、`producer.py` | `run_log_producer` 启动可确保 `app-logs`；发送失败可诊断 | 单 broker 环境副本因子固定为 1 |

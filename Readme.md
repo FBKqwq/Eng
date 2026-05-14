@@ -48,7 +48,8 @@ location/
 | 前端 | `http://localhost:5173` | Vue/Vite 开发服务 |
 | 后端 | `http://localhost:8000` | FastAPI |
 | 后端文档 | `http://localhost:8000/docs` | Swagger UI |
-| Kafka | `localhost:9092` | Kafka broker |
+| Kafka（宿主机 Producer / 后端） | `localhost:9092` | `PLAINTEXT_EXTERNAL`，与 `KAFKA_ADVERTISED_LISTENERS` 中 `localhost` 一致 |
+| Kafka（Compose 内，如 Logstash） | `kafka:29092` | `PLAINTEXT_INTERNAL`，容器间请用服务名 `kafka`，勿用 `localhost:9092` |
 | Elasticsearch | `http://localhost:9200` | ES HTTP API |
 | Kibana | `http://localhost:5601` | Kibana UI |
 | Logstash API | `http://localhost:9600` | Logstash monitoring API |
@@ -185,10 +186,46 @@ docker compose ps
 
 ### 5.7 验证基础设施
 
-Kafka 端口：
+Kafka 端口（宿主机对外映射仍为 9092）：
 
 ```powershell
 netstat -ano | findstr :9092
+```
+
+**Kafka 双监听说明**：`docker-compose.yml` 中为单节点 Kafka 配置了 `PLAINTEXT_EXTERNAL`（`localhost:9092`，供本机后端与工具）与 `PLAINTEXT_INTERNAL`（`kafka:29092`，供同一 Compose 网络内的 Logstash 等容器）。修改后请重新拉起 Kafka 与 Logstash：
+
+```powershell
+docker compose up -d kafka logstash
+```
+
+**Logstash 消费 Kafka**：`logstash/pipeline/logstash.conf` 已增加 `kafka` input（环境变量 `LS_PIPELINE_KAFKA_BOOTSTRAP_SERVERS` 默认 `kafka:29092`，`LS_PIPELINE_KAFKA_TOPIC` 默认 `app-logs`），带 `pipeline_kafka_app_logs` 标签的事件写入索引 `app-logs-%{+YYYY.MM.dd}`；Beats/TCP 入口仍写入默认索引模式。
+
+端到端冒烟（先发几条日志，再在 ES 中查索引）：
+
+```powershell
+cd C:\Users\zhurunjie\Desktop\elk\location\backend
+python -m app.tasks.run_log_producer --count 5 --interval 0.2
+```
+
+一键全链路（生成 → Kafka → 脚本确认 Kafka → Logstash → ES 检索，需本机 Kafka、Logstash、ES 已运行；ES 密码可读 `location/.env` 的 `ELASTIC_PASSWORD`）：
+
+```powershell
+cd C:\Users\zhurunjie\Desktop\elk\location\backend
+python -m app.tasks.verify_log_pipeline_full --count 2
+```
+
+等待数秒后（视 Logstash 消费延迟），使用已配置的 ES 账号查询（将 `elastic` 与密码换成你 `.env` 中的值）：
+
+```powershell
+curl.exe -s -u elastic:你的ES密码 -k "https://localhost:9200/_cat/indices/app-logs-*?v"
+curl.exe -s -u elastic:你的ES密码 -k "https://localhost:9200/app-logs-*/_search?size=2&pretty"
+```
+
+若 `app-logs-*` 索引无法创建、Logstash 日志中出现 `logstash_internal` 对 `indices:admin/auto_create` 无权限，说明需刷新内置角色：已在本仓库 `setup/roles/logstash_writer.json` 中为 `app-logs-*` 增加与 `logstash-*` 相同的写索引权限。修改后请在 `location` 目录执行：
+
+```powershell
+docker compose --profile setup up setup
+docker compose restart logstash
 ```
 
 Elasticsearch：

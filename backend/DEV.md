@@ -73,7 +73,7 @@
 
 - `containers` 和 `services` 都是按服务名聚合的容器状态映射，当前包含 `kafka`、`elasticsearch`、`logstash`、`kibana`、`setup`。
 - `docker.available=false` 时接口仍应稳定返回，容器项可以是 `unknown`。
-- Elasticsearch cluster health 因认证失败返回 `available=false` 或 `cluster_status=unknown` 时，不代表容器没运行；前端会用 Docker 容器状态兜底展示。
+- Elasticsearch cluster health 在 ES 未启用认证或已在 `.env` 中配置 `ELASTICSEARCH_PASSWORD` / `ELASTIC_PASSWORD` 时返回分片级详情；若仍失败则不代表容器未运行，前端会以 Docker 容器状态兜底展示。
 
 ## 6. CORS 规则
 
@@ -130,7 +130,7 @@ curl.exe -i -H "Origin: http://localhost:5173" http://localhost:8000/api/v1/syst
 | `/system/status` 只有 4 个基础字段 | 8000 上跑的是旧代码或错误工作目录 | 停掉旧进程，从 `location/backend` 重新启动 |
 | 前端显示 `Network Error` | CORS 头缺失或后端未运行 | 检查 curl 响应头和 8000 进程 |
 | Kafka 显示不可用 | Kafka 容器未启动或 9092 未映射 | 检查 `docker compose ps` 和 `localhost:9092` |
-| ES cluster health 为 unknown | ES 启用安全认证但 client 未带账号密码 | 当前前端以容器运行态兜底，认证后续单独收敛 |
+| ES cluster health 为 unknown 或 `error` 含 `missing authentication` | ES 启用安全认证但未配置账号密码 | 在 `location/backend/.env` 或 `location/.env` 中设置 `ELASTICSEARCH_USERNAME`、`ELASTICSEARCH_PASSWORD`（或沿用 `ELASTIC_PASSWORD`），重启后端 |
 | Docker 容器状态 unknown | 后端进程无法访问 Docker CLI/Engine | 确认 Docker Desktop 运行，当前用户能执行 `docker ps` |
 
 ## 9. 开发约束
@@ -147,7 +147,7 @@ curl.exe -i -H "Origin: http://localhost:5173" http://localhost:8000/api/v1/syst
 | --- | --- | --- | --- |
 | App/CORS | 可用 | 低 | 支持本地前端跨域访问 |
 | API 路由 | 可用但需完善 | 中 | health/system/logs/diagnosis 已挂载 |
-| 系统状态 | 可用 | 中 | Docker/Kafka 可真实探测，ES health 受认证影响 |
+| 系统状态 | 可用 | 中 | Docker/Kafka 可真实探测；ES health 在配置 `basic_auth` 后可穿透认证 |
 | 日志查询 | 可用但需继续联调 | 中 | 依赖 ES 索引与数据 |
 | 智能诊断 | 初步可用/持续扩展 | 中 | 规则优先，复杂链路后续接 LangGraph |
 | 模拟日志 | 初步可用 | 中 | 需结合 Kafka/Logstash 链路验证 |
@@ -157,4 +157,4 @@ curl.exe -i -H "Origin: http://localhost:5173" http://localhost:8000/api/v1/syst
 | 日期 | 修改内容 | 涉及文件 | 结果 | 遗留问题 |
 | --- | --- | --- | --- | --- |
 | 2026-05-14 | 建立后端目录级 DEV 文档 | `backend/DEV.md` | 汇总当前真实后端状态、接口契约、启动验证与排错方式 | 后续代码变更需持续维护 |
-| 2026-05-14 | 恢复系统状态 API 与 CORS | `app/main.py`、`app/api/v1/system.py`、`app/core/config.py` | `/system/status` 重新返回 Kafka/ES/Docker/containers/services，CORS 可用 | ES cluster health 仍需认证配置 |
+| 2026-05-14 | ES 客户端支持安全认证（与监控用 cluster health 共用） | `app/core/config.py`、`app/services/elasticsearch/client.py`、`app/tasks/verify_log_pipeline_full.py`、`.env.example` | `get_es_client()` 在配置密码后使用 `basic_auth`；配置支持 `ELASTIC_PASSWORD` 别名 | 密码需由运维本地注入，勿提交真实密钥 |
