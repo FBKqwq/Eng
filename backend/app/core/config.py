@@ -1,4 +1,3 @@
-from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,14 +13,6 @@ class Settings(BaseSettings):
 
     elasticsearch_hosts: str = "http://localhost:9200"
     elasticsearch_index_pattern: str = "app-logs-*"
-    elasticsearch_username: str = "elastic"
-    elasticsearch_password: str = Field(
-        default="",
-        validation_alias=AliasChoices(
-            "ELASTICSEARCH_PASSWORD",
-            "ELASTIC_PASSWORD",
-        ),
-    )
 
     docker_project_name: str = "location"
     docker_monitored_services: str = "kafka,elasticsearch,logstash,kibana,setup"

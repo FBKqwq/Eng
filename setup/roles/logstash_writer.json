@@ -9,8 +9,7 @@
       "names": [
         "logs-generic-default",
         "logstash-*",
-        "ecs-logstash-*",
-        "app-logs-*"
+        "ecs-logstash-*"
       ],
       "privileges": [
         "write",

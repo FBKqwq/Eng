@@ -31,7 +31,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/Agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Simulation Service | 可用但需链路验证 | 2026-05-14 | codex | 中 | 代码与文档字段对齐；Kafka 写入已由任务侧 topic 预建与长连接 producer 保障 |
+| Simulation Service | 可用但需链路验证 | 2026-05-13 | codex | 中 | 日志字段已扩展，仍依赖后续 Kafka/Logstash/ES 链路验证 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -44,14 +44,13 @@
 ## 8. 真实实现与设计愿景差异
 | 方向 | 设计愿景 | 当前状态 | 后续动作 |
 |---|---|---|---|
-| 结构化日志生成 | 覆盖行为、应用、性能、安全、基础设施等多类日志 | 已实现多类型加权随机单条生成，字段与本文档第 4 节一致 | 后续增加同一 trace 的连续链路批量生成 |
+| 结构化日志生成 | 覆盖行为、应用、性能、安全、基础设施等多类日志 | 已实现单条随机日志生成 | 后续增加同一 trace 的连续链路批量生成 |
 | 埋点日志 | 支持点击量、访问量、停留时长、转化步骤等指标 | 已在 behavior 日志中加入 tracking 对象 | 后续接入 ES 聚合与前端指标展示 |
 | LangGraph 诊断上下文 | 日志天然携带根因分析所需证据 | 已增加 anomaly_signal 与 diagnosis_hints | 后续由诊断服务检索并组装图式分析上下文 |
-| 基础设施闭环 | Kafka/Logstash/ES 全链路消费模拟日志 | 后端生成字段已对齐；Kafka 可稳定写入 | 需要基础设施层补 Kafka input 与索引 mapping |
+| 基础设施闭环 | Kafka/Logstash/ES 全链路消费模拟日志 | 当前仅后端生成与 Kafka Producer 侧可发送 | 需要基础设施层补 Kafka input 与索引 mapping |
 
 ## 9. 开发日志区
 | 时间 | 修改内容 | 涉及文件 | 当前结果 | 遗留问题 |
 |---|---|---|---|---|
 | 2026-05-06 | 初始化 Simulation 模块 DEV 文档 | `app/services/simulation/DEV.md` | 建立模拟模块维护基线 | 待补充模板维度与参数化能力 |
 | 2026-05-13 | 扩展电商平台结构化日志生成，新增埋点日志、异常诊断上下文、性能/安全/基础设施辅助日志 | `app/services/simulation/log_generator.py`、`app/services/simulation/DEV.md` | 生成日志已能覆盖点击量、访问量、业务异常和 LangGraph 诊断上下文 | Kafka -> Logstash -> ES 链路与索引 mapping 仍需基础设施支持验证 |
-| 2026-05-14 | 将 log_generator 实现与本文档第 4 节字段对齐，落地多 log_type 模板 | `log_generator.py` | 与 DEV 描述一致，可经 `run_log_producer` 写入 Kafka | Logstash/ES 字段映射待基础设施配置 |
