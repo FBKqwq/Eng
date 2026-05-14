@@ -36,3 +36,18 @@ Import check:
 ```powershell
 E:\Python\Anaconda\envs\elk\python.exe -c "from app.main import app; print(app.title)"
 ```
+
+## 2026-05-14 Restore Note
+
+### Changed Files
+- `app/main.py`
+- `app/api/v1/system.py`
+- `app/core/config.py`
+
+### Summary
+- Restored `CORSMiddleware` after `app/main.py` was overwritten by the base scaffold version.
+- Restored structured `/api/v1/system/status` response assembly after `system.py` was overwritten by a raw config-only endpoint.
+- Restored Docker monitor settings in `core/config.py`.
+
+### Runtime Note
+- A running uvicorn process must be restarted before `http://localhost:8000/api/v1/system/status` exposes the restored fields and CORS headers.

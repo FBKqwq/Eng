@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     elasticsearch_hosts: str = "http://localhost:9200"
     elasticsearch_index_pattern: str = "app-logs-*"
 
+    docker_project_name: str = "location"
+    docker_monitored_services: str = "kafka,elasticsearch,logstash,kibana,setup"
+
     log_producer_interval_seconds: int = 1
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

@@ -17,6 +17,11 @@ const routes = [
       { path: 'results', name: 'results', component: ResultsView },
       { path: 'system', name: 'system', component: SystemView }
     ]
+  },
+  {
+    path: '/temp/developer',
+    name: 'developer',
+    component: SystemView
   }
 ]
 

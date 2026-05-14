@@ -25,7 +25,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Elasticsearch Service | 可用但需完善 | 2026-05-06 | codex | 中 | 基础查询能力在位，健壮性待增强 |
+| Elasticsearch Service | 可用但需完善 | 2026-05-14 | codex | 中 | 基础查询能力在位，健壮性待增强 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -42,6 +42,7 @@
 | 时间 | 修改内容 | 涉及文件 | 当前结果 | 遗留问题 |
 |---|---|---|---|---|
 | 2026-05-06 | 初始化 Elasticsearch 模块 DEV 文档 | `app/services/elasticsearch/DEV.md` | 建立查询模块维护基线 | 待补充真实压测与异常数据记录 |
+| 2026-05-14 | 日志查询入参类型与 `LogQueryRequest` 对齐 | `app/services/elasticsearch/log_query_service.py` | 应用可正常 import，占位查询逻辑不变 | 无 |
 
 ## 2026-05-13 补充：Cluster Health 快照
 
@@ -49,7 +50,7 @@
 
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 | --- | --- | --- | --- | --- | --- |
-| Elasticsearch Service | 可用但需完善 | 2026-05-13 | codex | 中 | 已补充只读 cluster health 探测，不影响日志查询服务 |
+| Elasticsearch Service | 可用但需完善 | 2026-05-14 | codex | 中 | 已补充只读 cluster health 探测，不影响日志查询服务 |
 
 ### 已实现功能清单更新
 
@@ -61,3 +62,4 @@
 | 时间 | 修改内容 | 涉及文件 | 当前结果 | 遗留问题 |
 | --- | --- | --- | --- | --- |
 | 2026-05-13 | 新增 ES 集群健康快照 | `app/services/elasticsearch/cluster_status.py`、`app/schemas/system.py` | `/system/status` 可展示 `cluster_status`（green/yellow/red/unknown）、节点、分片与文档计数 | 依赖 Elasticsearch 服务真实可访问 |
+| 2026-05-14 | 日志查询服务入参类型与 schema 对齐 | `app/services/elasticsearch/log_query_service.py` | `search_logs` 使用 `LogQueryRequest`，消除错误导入 | 无 |

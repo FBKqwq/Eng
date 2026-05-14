@@ -35,8 +35,8 @@ export const getClusterHealthMeta = (status) => {
     yellow: { label: 'Yellow', tone: 'warning', description: '主分片可用，但存在未分配副本分片。' },
     red: { label: 'Red', tone: 'danger', description: '存在未分配主分片，检索或写入可能受影响。' },
     running: { label: 'Running', tone: 'success', description: 'Elasticsearch 容器正在运行；当前接口未返回集群分片级健康详情。' },
-    up: { label: 'Running', tone: 'success', description: 'Elasticsearch 服务可访问；当前接口未返回集群分片级健康详情。' },
-    ok: { label: 'Running', tone: 'success', description: 'Elasticsearch 服务可访问；当前接口未返回集群分片级健康详情。' },
+    up: { label: 'Running', tone: 'success', description: 'Elasticsearch 服务可访问；当前未返回集群分片级健康详情。' },
+    ok: { label: 'Running', tone: 'success', description: 'Elasticsearch 服务可访问；当前未返回集群分片级健康详情。' },
     unknown: { label: 'Unknown', tone: 'neutral', description: '后端暂未获取到 Elasticsearch 集群健康状态。' }
   }
 
@@ -68,6 +68,8 @@ export const buildDeveloperServices = ({ apiHealth, systemStatus, frontendReady 
   const services = systemStatus?.services || systemStatus?.docker?.containers || {}
   const kafkaContainer = containers.kafka || services.kafka || {}
   const elasticsearchContainer = containers.elasticsearch || services.elasticsearch || {}
+  const elasticsearchHealthStatus = systemStatus?.elasticsearch?.cluster_status
+  const hasElasticsearchHealth = ['green', 'yellow', 'red'].includes(String(elasticsearchHealthStatus || '').toLowerCase())
 
   return [
     {
@@ -108,11 +110,11 @@ export const buildDeveloperServices = ({ apiHealth, systemStatus, frontendReady 
       key: 'elasticsearch',
       name: 'Elasticsearch',
       type: 'Container / Search',
-      status: normalizeStatus(systemStatus?.elasticsearch?.cluster_status || elasticsearchContainer.status),
+      status: normalizeStatus(hasElasticsearchHealth ? elasticsearchHealthStatus : elasticsearchContainer.status),
       endpoint: systemStatus?.elasticsearch_hosts || '-',
-      detail: systemStatus?.elasticsearch
-        ? `cluster: ${systemStatus.elasticsearch.cluster_status || elasticsearchContainer.status}`
-        : elasticsearchContainer.detail || elasticsearchContainer.raw_status || '等待后端提供 Elasticsearch 运行状态'
+      detail: hasElasticsearchHealth
+        ? `cluster: ${elasticsearchHealthStatus}`
+        : elasticsearchContainer.detail || elasticsearchContainer.raw_status || systemStatus?.elasticsearch?.error || '等待后端提供 Elasticsearch 运行状态'
     },
     {
       key: 'logstash',

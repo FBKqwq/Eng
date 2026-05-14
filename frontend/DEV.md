@@ -1,5 +1,27 @@
 # Frontend Development Maintenance
 
+## 2026-05-14 System Status Recovery
+
+### Changed Files
+- `src/views/system/index.vue`
+
+### Current Route Contract
+- The active source route for the system status page is `/system`.
+- `src/router/index.js` currently mounts `SystemView` as a child of `/`.
+- `src/layout/index.vue` currently exposes `/system` in the sidebar.
+- `/temp/developer` is also mounted to `SystemView` as a manual troubleshooting entry.
+
+### Overwrite Investigation
+- `src/views/system/index.vue`, `src/router/index.js`, `src/layout/index.vue`, and `src/api/system.js` shared the same write time around `2026-05-13 21:31:40`.
+- The simplified `system/index.vue` matched the Git baseline shape: a button calling `getSystemStatus()` and a `<pre>` rendering raw JSON.
+- This indicates the rich status page was likely overwritten by a restore to the base framework version or by reapplying the basic scaffold, not by a runtime hot-reload issue.
+
+### Guardrail
+- Do not replace `src/views/system/index.vue` with a raw JSON debug page.
+- The page must render Kafka, Elasticsearch, backend API, Logstash, Kibana, and config snapshots from `GET /api/v1/system/status`.
+- If `/system/status` returns only container/config fields, use `containers`, `services`, or `docker.containers` as the display source.
+- If Elasticsearch cluster health returns `unknown` or `available=false` while the Docker container is running, the developer page should display the container running state and keep the cluster error as diagnostic detail.
+
 ## 2026-05-13 Developer Status Infra Snapshot
 
 ### Changed Files
