@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -62,6 +63,7 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument("--count", type=int, default=2, help="发送条数，默认 2")
     p.add_argument("--topic", type=str, default=None, help="Kafka topic，默认与配置一致")
+    p.add_argument("--workers", type=int, default=1, help="并发生成与发送 worker 数，默认 1")
     p.add_argument(
         "--kafka-wait",
         type=float,
@@ -234,6 +236,81 @@ def _wait_es_for_log_ids(
     return found
 
 
+def _produce_logs_concurrently(
+    *,
+    count: int,
+    workers: int,
+    topic: str,
+) -> tuple[list[dict[str, Any]], set[str], int]:
+    logs: list[dict[str, Any]] = []
+    want_ids: set[str] = set()
+    lock = threading.Lock()
+    next_seq = {"value": 0}
+    error: list[BaseException] = []
+
+    def claim_seq() -> int | None:
+        with lock:
+            if error:
+                return None
+            if next_seq["value"] >= count:
+                return None
+            next_seq["value"] += 1
+            return next_seq["value"]
+
+    def worker(worker_id: int) -> None:
+        try:
+            producer = get_producer()
+        except Exception as exc:  # noqa: BLE001
+            with lock:
+                error.append(exc)
+            return
+
+        try:
+            while True:
+                seq = claim_seq()
+                if seq is None:
+                    break
+
+                log = build_mock_log()
+                lid = log.get("log_id")
+                if not isinstance(lid, str):
+                    with lock:
+                        error.append(RuntimeError("build_mock_log 缺少字符串 log_id"))
+                    break
+
+                print(
+                    f"[1] worker[{worker_id}] 模拟生成 产出 dict[{seq}/{count}] "
+                    f"log_id={lid} log_type={log.get('log_type')}"
+                )
+                send_log_message(log, producer=producer, topic=topic)
+                print(
+                    f"[2] worker[{worker_id}] Kafka Producer 消费 dict -> 产出 topic 消息 "
+                    f"log_id={lid}"
+                )
+
+                with lock:
+                    logs.append(log)
+                    want_ids.add(lid)
+        except Exception as exc:  # noqa: BLE001
+            with lock:
+                error.append(exc)
+        finally:
+            producer.close()
+
+    threads = [
+        threading.Thread(target=worker, args=(idx + 1,), daemon=True)
+        for idx in range(workers)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    if error:
+        raise error[0]
+    return logs, want_ids, len(threads)
+
+
 def main() -> int:
     load_dotenv(_early_backend.parent / ".env")
     load_dotenv(_early_backend / ".env")
@@ -243,6 +320,9 @@ def main() -> int:
     if args.count <= 0:
         print("[错误] --count 必须大于 0", file=sys.stderr)
         return 1
+    if args.workers <= 0:
+        print("[错误] --workers 必须大于 0", file=sys.stderr)
+        return 1
 
     topic = args.topic or settings.kafka_topic
     bootstrap = settings.kafka_bootstrap_servers
@@ -251,6 +331,7 @@ def main() -> int:
     print("========== 全链路验证 ==========")
     print(f"Kafka bootstrap: {bootstrap}  topic: {topic}")
     print(f"Elasticsearch: {settings.elasticsearch_hosts}  index: {index_pattern}")
+    print(f"Producer workers: {args.workers}  planned logs: {args.count}")
 
     if not args.skip_ensure_topic:
         try:
@@ -259,22 +340,6 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             print(f"[错误] topic 预建失败: {exc}", file=sys.stderr)
             return 2
-
-    # ----- 环节 1：模拟生成 -----
-    logs: list[dict[str, Any]] = []
-    want_ids: set[str] = set()
-    for i in range(args.count):
-        log = build_mock_log()
-        lid = log.get("log_id")
-        if not isinstance(lid, str):
-            print("[错误] build_mock_log 缺少字符串 log_id", file=sys.stderr)
-            return 4
-        want_ids.add(lid)
-        logs.append(log)
-        print(
-            f"[1] 模拟生成 产出 dict[{i + 1}/{args.count}] "
-            f"log_id={lid} log_type={log.get('log_type')}"
-        )
 
     # 先起 Consumer（latest）并完成分区分配，再发送，避免漏读
     group_id = f"elk-full-pipeline-verify-{uuid.uuid4().hex}"
@@ -292,17 +357,20 @@ def main() -> int:
             print("[错误] Kafka 消费者未完成分区分配", file=sys.stderr)
             return 3
 
-        # ----- 环节 2：写入 Kafka -----
-        producer = get_producer()
+        # ----- 环节 1/2：多线程模拟生成并写入 Kafka -----
         try:
-            for log in logs:
-                send_log_message(log, producer=producer, topic=topic)
-                print(
-                    f"[2] Kafka Producer 消费 dict -> 产出 topic 消息 "
-                    f"log_id={log.get('log_id')}"
-                )
-        finally:
-            producer.close()
+            logs, want_ids, actual_workers = _produce_logs_concurrently(
+                count=args.count,
+                workers=args.workers,
+                topic=topic,
+            )
+            print(
+                f"[2] 多线程生产完成 workers={actual_workers} "
+                f"generated={len(logs)} topic={topic}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[错误] 多线程生成或 Kafka 发送失败: {exc}", file=sys.stderr)
+            return 4
 
         # ----- 环节 3：脚本内 Consumer 消费 Kafka -----
         kafka_deadline = time.time() + args.kafka_wait

@@ -20,8 +20,10 @@
 - 启动时默认调用 `ensure_configured_topic()` 预建业务 topic，可用 `--skip-ensure-topic` 跳过。
 - 启动失败（topic 预建或 producer 连接）时向 stderr 输出可诊断中文提示并带退出码。
 - 支持 `--count`、`--topic` 命令行参数。
+- 支持 `--workers` 多线程日志生产；每个 worker 独立持有 KafkaProducer，统一写入同一个 Kafka topic。
 - `verify_log_kafka_pipeline.py`：先发后收，用独立 consumer group 与 `latest` 偏移证明 producer 写入可被消费。
 - `verify_log_pipeline_full.py`：分段打印各环产出；Kafka 内校验后轮询 ES（`ELASTIC_PASSWORD` 等从 `location/.env` 或 `backend/.env` 加载）。
+- `verify_log_pipeline_full.py` 支持 `--workers`，可在全链路验证中覆盖多线程日志生成与 Kafka 写入。
 
 ## 5. 待开发功能清单（P0-P3）
 - P0：与 ES 索引模板 / ILM 对齐（当前由 Logstash 写入 `app-logs-*`，字段映射可在索引模板中固化）。
@@ -32,7 +34,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Tasks | 可用但需完善 | 2026-05-14 | codex | 低 | Kafka→Logstash→ES 已由基础设施配置；任务脚本与 README 5.7 对齐 |
+| Tasks | 可用但需完善 | 2026-05-19 | codex | 低 | `run_log_producer` 已支持多线程生产；Kafka→Logstash→ES 已由基础设施配置 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -55,3 +57,5 @@
 | 2026-05-14 | 新增 Kafka 链路验证脚本（内置 consumer） | `verify_log_kafka_pipeline.py`、`DEV.md` | `python -m app.tasks.verify_log_kafka_pipeline` 可证明发送可被消费 | 依赖本机 Kafka；Windows 终端建议 UTF-8 |
 | 2026-05-14 | 基础设施侧接通 Logstash Kafka input | `location/docker-compose.yml`、`location/logstash/pipeline/logstash.conf`、`location/README.md` | 双 listener + `kafka:29092` 消费 `app-logs` 写入 `app-logs-*` | 详见 README 5.7 冒烟与 ES 认证方式 |
 | 2026-05-14 | 新增全链路验证脚本（含 ES 轮询） | `verify_log_pipeline_full.py`、`DEV.md` | `python -m app.tasks.verify_log_pipeline_full` 验证至 ES 命中 | 需 Kafka、Logstash、ES 可用；ES 密码见 location/.env |
+| 2026-05-19 | `run_log_producer` 支持多线程生产 | `run_log_producer.py`、`tests/test_health.py` | `python -m app.tasks.run_log_producer --count 6 --workers 3 --interval 0.1` 验证通过，统一写入 `app-logs` | 后续可补 TPS 统计与优雅进度指标 |
+| 2026-05-19 | 全链路验证纳入多线程生成 | `verify_log_pipeline_full.py` | `--workers` 可覆盖“多线程生成 -> Kafka -> Logstash -> ES”完整验证 | 前端快速检测默认使用 2 workers |

@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 from app.core.config import settings
-from app.schemas.system import DockerStatusResponse, SystemStatusResponse
+from app.schemas.system import DockerStatusResponse, PipelineVerifyRequest, PipelineVerifyResponse, SystemStatusResponse
 from app.services.docker_status import get_docker_status
 from app.services.elasticsearch.cluster_status import get_elasticsearch_health_snapshot
 from app.services.kafka.cluster_status import get_kafka_status_snapshot
+from app.services.pipeline_verification import run_pipeline_verification
 
 router = APIRouter()
 
@@ -28,6 +29,16 @@ def system_status() -> SystemStatusResponse:
 @router.get("/containers", response_model=DockerStatusResponse)
 def system_containers() -> DockerStatusResponse:
     return _get_docker_status()
+
+
+@router.post("/pipeline/verify", response_model=PipelineVerifyResponse)
+def verify_pipeline(payload: PipelineVerifyRequest) -> PipelineVerifyResponse:
+    return run_pipeline_verification(
+        count=payload.count,
+        workers=payload.workers,
+        kafka_wait=payload.kafka_wait,
+        es_wait=payload.es_wait,
+    )
 
 
 def _get_docker_status() -> DockerStatusResponse:

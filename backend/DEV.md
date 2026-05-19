@@ -148,9 +148,10 @@ curl.exe -i -H "Origin: http://localhost:5173" http://localhost:8000/api/v1/syst
 | App/CORS | 可用 | 低 | 支持本地前端跨域访问 |
 | API 路由 | 可用但需完善 | 中 | health/system/logs/diagnosis 已挂载 |
 | 系统状态 | 可用 | 中 | Docker/Kafka 可真实探测；ES health 在配置 `basic_auth` 后可穿透认证 |
-| 日志查询 | 可用但需继续联调 | 中 | 依赖 ES 索引与数据 |
-| 智能诊断 | 初步可用/持续扩展 | 中 | 规则优先，复杂链路后续接 LangGraph |
-| 模拟日志 | 初步可用 | 中 | 需结合 Kafka/Logstash 链路验证 |
+| 全链路验证 | 可用 | 中 | 系统 API 可触发多线程 `verify_log_pipeline_full` 并返回节点状态与终端输出 |
+| 日志查询 | 可用但需继续联调 | 中 | 已接入真实 ES search；依赖 ES 索引与数据 |
+| 智能诊断 | 初步可用/持续扩展 | 中 | 规则优先并可拉取 ES 上下文，复杂链路后续接 LangGraph |
+| 模拟日志 | 可用但需继续增强 | 中 | 已覆盖 Nginx Web Server 日志；模拟日志 `timestamp` 统一输出 UTC `Z` 时间；支持任务层多线程生产并统一写入 Kafka topic |
 
 ## 11. 开发日志
 
@@ -158,3 +159,8 @@ curl.exe -i -H "Origin: http://localhost:5173" http://localhost:8000/api/v1/syst
 | --- | --- | --- | --- | --- |
 | 2026-05-14 | 建立后端目录级 DEV 文档 | `backend/DEV.md` | 汇总当前真实后端状态、接口契约、启动验证与排错方式 | 后续代码变更需持续维护 |
 | 2026-05-14 | ES 客户端支持安全认证（与监控用 cluster health 共用） | `app/core/config.py`、`app/services/elasticsearch/client.py`、`app/tasks/verify_log_pipeline_full.py`、`.env.example` | `get_es_client()` 在配置密码后使用 `basic_auth`；配置支持 `ELASTIC_PASSWORD` 别名 | 密码需由运维本地注入，勿提交真实密钥 |
+| 2026-05-18 | 完成 P0 修复：诊断接口字段对齐，日志查询接入真实 ES search | `app/schemas/diagnosis.py`、`app/services/diagnosis/*`、`app/services/elasticsearch/log_query_service.py`、`tests/test_health.py` | 健康检查、日志查询、诊断接口均可稳定返回；ES 未启动时日志查询返回可诊断错误结构 | `pytest` 未安装；真实 ES 命中需启动 ELK 后联调 |
+| 2026-05-18 | 为系统状态页新增全链路验证 API | `app/api/v1/system.py`、`app/schemas/system.py`、`app/services/pipeline_verification.py` | 前端可展示“日志生产 -> Kafka -> Logstash -> ES”节点状态与终端输出 | 长耗时验证依赖 Kafka/Logstash/ES 在线 |
+| 2026-05-19 | 新增 Nginx Web Server 日志生成与多线程 Kafka 生产 | `app/services/simulation/log_generator.py`、`app/tasks/run_log_producer.py`、`tests/test_health.py` | `build_mock_log()` 可产出 `web_server`；`--workers` 多线程统一写入 `app-logs` 已验证 | 后续可补指定日志类型与 TPS 控制 |
+| 2026-05-19 | 全链路验证纳入多线程生成测试 | `app/tasks/verify_log_pipeline_full.py`、`app/services/pipeline_verification.py`、`app/schemas/system.py`、`app/api/v1/system.py` | 前端快速检测默认以 2 workers 验证多线程生成到 ES 命中 | 节点解析基于脚本输出关键阶段 |
+| 2026-05-19 | 修复模拟日志时间戳时区问题 | `app/services/simulation/log_generator.py`、`app/services/simulation/DEV.md`、`backend/DEV.md` | 新生成日志的 `timestamp` 为 UTC ISO-8601 `Z` 格式，Nginx `time_local` 保留本地时区偏移，降低 Kibana 相对时间范围查询偏差 | 已写入 ES 的旧日志时间不会回填，需要重新生成新日志验证 |

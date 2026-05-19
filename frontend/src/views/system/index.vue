@@ -149,11 +149,47 @@
     </section>
 
     <section class="config-panel">
-      <div>
-        <h2>配置快照</h2>
-        <p>来自后端系统状态接口，保留基础配置字段，便于排查当前环境指向。</p>
+      <div class="config-header">
+        <div>
+          <p class="panel-kicker">Pipeline Check</p>
+          <h2>全链路验证</h2>
+          <p>基于后端验证任务，检查多线程日志生产到 Elasticsearch 检索的完整传输链路。</p>
+        </div>
+        <button class="verify-button" :disabled="pipelineLoading" @click="runPipelineCheck">
+          {{ pipelineLoading ? '检测中...' : '快速检测' }}
+        </button>
       </div>
-      <dl>
+
+      <div class="pipeline-flow" aria-label="全链路验证节点">
+        <div
+          v-for="(node, index) in pipelineNodes"
+          :key="node.key"
+          class="pipeline-step"
+          :class="`node-${node.status}`"
+        >
+          <div class="node-icon" :title="nodeStatusLabel(node.status)">
+            {{ nodeIcon(node.status, index) }}
+          </div>
+          <div class="node-copy">
+            <strong>{{ node.label }}</strong>
+            <span>{{ node.detail }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="pipelineError" class="inline-error">
+        {{ pipelineError }}
+      </div>
+
+      <div class="terminal-panel">
+        <div class="terminal-heading">
+          <strong>验证输出</strong>
+          <span>{{ pipelineSummary }}</span>
+        </div>
+        <pre>{{ pipelineOutput }}</pre>
+      </div>
+
+      <dl class="config-snapshot">
         <div>
           <dt>Kafka Bootstrap Servers</dt>
           <dd>{{ formatValue(systemStatus.kafka_bootstrap_servers) }}</dd>
@@ -177,7 +213,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { getApiHealth, getSystemStatus } from '../../api/system'
+import { getApiHealth, getSystemStatus, verifyPipeline } from '../../api/system'
 import ServiceStatusCard from '../../components/system/ServiceStatusCard.vue'
 import {
   buildDeveloperServices,
@@ -192,6 +228,16 @@ const errorMessage = ref('')
 const apiHealth = ref(null)
 const systemStatus = ref({})
 const lastUpdatedAt = ref(null)
+const pipelineLoading = ref(false)
+const pipelineError = ref('')
+const pipelineResult = ref(null)
+
+const DEFAULT_PIPELINE_NODES = [
+  { key: 'producer', label: '日志生产', status: 'pending', detail: '等待检测' },
+  { key: 'kafka', label: 'Kafka 接收', status: 'pending', detail: '等待检测' },
+  { key: 'logstash', label: 'Logstash 处理', status: 'pending', detail: '等待检测' },
+  { key: 'elasticsearch', label: 'Elasticsearch 检索', status: 'pending', detail: '等待检测' }
+]
 
 const getContainerStatus = (key) =>
   systemStatus.value.containers?.[key] ||
@@ -255,6 +301,53 @@ const lastUpdatedText = computed(() => {
   return lastUpdatedAt.value.toLocaleTimeString()
 })
 
+const pipelineNodes = computed(() => pipelineResult.value?.nodes?.length ? pipelineResult.value.nodes : DEFAULT_PIPELINE_NODES)
+const pipelineSummary = computed(() => {
+  if (pipelineLoading.value) {
+    return '正在执行多线程 verify_log_pipeline_full'
+  }
+
+  if (!pipelineResult.value) {
+    return '尚未执行'
+  }
+
+  const status = pipelineResult.value.success ? '通过' : '失败'
+  return `${status} / exit=${pipelineResult.value.exit_code} / ${pipelineResult.value.duration_ms}ms`
+})
+const pipelineOutput = computed(() => {
+  if (pipelineLoading.value && !pipelineResult.value) {
+    return '正在启动全链路验证，请稍候...'
+  }
+
+  if (!pipelineResult.value) {
+    return '点击“快速检测”后，这里会展示多线程 verify_log_pipeline_full 的终端输出。'
+  }
+
+  const stdout = pipelineResult.value.stdout || ''
+  const stderr = pipelineResult.value.stderr || ''
+  return [stdout.trim(), stderr.trim()].filter(Boolean).join('\n\n[stderr]\n') || '验证命令未返回输出。'
+})
+
+const nodeStatusLabel = (status) => {
+  const map = {
+    success: '通过',
+    failed: '失败',
+    running: '检测中',
+    pending: '等待检测'
+  }
+  return map[status] || '未知'
+}
+
+const nodeIcon = (status, index) => {
+  const map = {
+    success: '✓',
+    failed: '!',
+    running: '…',
+    pending: String(index + 1)
+  }
+  return map[status] || String(index + 1)
+}
+
 const loadStatus = async () => {
   loading.value = true
   errorMessage.value = ''
@@ -282,6 +375,40 @@ const loadStatus = async () => {
 
   lastUpdatedAt.value = new Date()
   loading.value = false
+}
+
+const runPipelineCheck = async () => {
+  pipelineLoading.value = true
+  pipelineError.value = ''
+
+  try {
+    const result = await verifyPipeline({
+      count: 4,
+      workers: 2,
+      kafka_wait: 45,
+      es_wait: 120
+    })
+    pipelineResult.value = result.data
+    if (!result.data?.success) {
+      pipelineError.value = result.data?.error || '全链路验证未通过，请查看验证输出。'
+    }
+  } catch (error) {
+    pipelineError.value = error.response?.data?.detail || error.message || '全链路验证请求失败。'
+    pipelineResult.value = {
+      success: false,
+      exit_code: -1,
+      duration_ms: 0,
+      nodes: DEFAULT_PIPELINE_NODES.map((node, index) => ({
+        ...node,
+        status: index === 0 ? 'failed' : 'pending',
+        detail: index === 0 ? '验证请求失败' : '未执行'
+      })),
+      stdout: '',
+      stderr: pipelineError.value
+    }
+  } finally {
+    pipelineLoading.value = false
+  }
 }
 
 onMounted(loadStatus)
@@ -467,16 +594,146 @@ dd {
   overflow-wrap: anywhere;
 }
 
+.config-header,
+.terminal-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.verify-button {
+  flex: 0 0 auto;
+}
+
+.pipeline-flow {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pipeline-step {
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  min-height: 76px;
+  padding: 12px;
+}
+
+.node-icon {
+  align-items: center;
+  border-radius: 999px;
+  display: flex;
+  flex: 0 0 34px;
+  font-size: 16px;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.node-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.node-copy strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.node-copy span {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.node-success {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.node-success .node-icon {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.node-failed {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.node-failed .node-icon {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.node-running {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.node-running .node-icon {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.node-pending .node-icon {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.terminal-panel {
+  background: #111827;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.terminal-heading {
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 10px 12px;
+}
+
+.terminal-heading span {
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.terminal-panel pre {
+  color: #e5e7eb;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0;
+  max-height: 340px;
+  overflow: auto;
+  padding: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.config-snapshot {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 16px;
+}
+
 @media (max-width: 760px) {
   .page-header,
-  .panel-heading {
+  .panel-heading,
+  .config-header,
+  .terminal-heading {
     align-items: stretch;
     flex-direction: column;
   }
 
   .overview,
   .detail-list,
-  .config-panel dl {
+  .config-panel dl,
+  .pipeline-flow {
     grid-template-columns: 1fr;
   }
 }

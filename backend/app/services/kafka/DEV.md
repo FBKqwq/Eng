@@ -18,6 +18,7 @@
 - 已有 Kafka producer 服务文件。
 - `send_log_message` 支持传入复用 `KafkaProducer`、可选 `topic` 覆盖；失败时抛出带 bootstrap/topic 信息的 `RuntimeError`。
 - `ensure_configured_topic()`：在 broker 可达时确保 `settings.kafka_topic` 存在（默认 3 分区、副本因子 1）。
+- 多线程生产由 `app/tasks/run_log_producer.py --workers` 编排；Kafka service 继续只负责单 Producer 连接与发送封装。
 
 ## 5. 待开发功能清单（P0-P3）
 - P0：与 Logstash Kafka input 接通后做端到端发送抽样验证。
@@ -28,7 +29,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Kafka Service | 可用但需完善 | 2026-05-14 | codex | 中 | topic 预建、producer 复用与快照探测并存；待 Logstash 消费验证 |
+| Kafka Service | 可用但需完善 | 2026-05-19 | codex | 中 | topic 预建、producer 复用与快照探测并存；task 层已验证多线程统一写入 topic |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -64,3 +65,4 @@
 | --- | --- | --- | --- | --- |
 | 2026-05-13 | 新增 Kafka 状态快照 | `app/services/kafka/cluster_status.py`、`app/schemas/system.py` | `/system/status` 可展示 Kafka broker/topic 数量、配置 topic 是否存在、分区数和副本数 | 依赖 Kafka broker 真实可访问 |
 | 2026-05-14 | 日志生产落地：topic 预建、producer 复用与发送错误信息 | `topic_setup.py`、`producer.py` | `run_log_producer` 启动可确保 `app-logs`；发送失败可诊断 | 单 broker 环境副本因子固定为 1 |
+| 2026-05-19 | 多线程生产能力完成联调 | `app/tasks/run_log_producer.py` | 3 个 worker 可并发生成日志并统一写入 `app-logs` | Kafka service 本身保持轻量封装，不承担线程调度 |

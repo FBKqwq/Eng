@@ -76,3 +76,28 @@ class SystemStatusResponse(BaseModel):
     docker: DockerStatusResponse
     containers: Dict[str, ContainerStatus]
     services: Dict[str, ContainerStatus]
+
+
+class PipelineVerifyRequest(BaseModel):
+    count: int = Field(default=2, ge=1, le=20)
+    workers: int = Field(default=2, ge=1, le=8)
+    kafka_wait: float = Field(default=45.0, ge=5.0, le=180.0)
+    es_wait: float = Field(default=120.0, ge=10.0, le=300.0)
+
+
+class PipelineVerifyNode(BaseModel):
+    key: str
+    label: str
+    status: str = Field(description="success, failed, running, or pending")
+    detail: Optional[str] = None
+
+
+class PipelineVerifyResponse(BaseModel):
+    success: bool
+    exit_code: int
+    duration_ms: int
+    command: List[str]
+    nodes: List[PipelineVerifyNode]
+    stdout: str
+    stderr: str
+    error: Optional[str] = None

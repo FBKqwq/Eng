@@ -10,7 +10,7 @@
 | 健康检查 | `app/api/v1/health.py` | 服务可用性探活 |
 | 日志查询接口 | `app/api/v1/logs.py` | 日志查询入口 |
 | 智能诊断接口 | `app/api/v1/diagnosis.py` | 诊断入口 |
-| 系统状态接口 | `app/api/v1/system.py` | 运行状态查询 |
+| 系统状态接口 | `app/api/v1/system.py` | 运行状态查询与全链路验证入口 |
 
 ## 3. 模块职责边界
 - 应该放在这里：请求接收、基础校验、调用 service、统一响应返回。
@@ -19,6 +19,7 @@
 ## 4. 已实现功能清单
 - 已提供 health/logs/diagnosis/system 四类 v1 接口文件。
 - 已具备路由聚合入口文件。
+- `POST /api/v1/system/pipeline/verify` 已接入后端全链路验证服务，返回节点状态与终端输出。
 
 ## 5. 待开发功能清单（P0-P3）
 - P0：补齐接口错误码与异常返回结构一致性。
@@ -29,7 +30,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| API | 可用但需完善 | 2026-05-14 | codex | 中 | `/api/v1/system/status` 已恢复结构化系统状态响应，接口规范化仍需加强 |
+| API | 可用但需完善 | 2026-05-18 | codex | 中 | `/api/v1/system/status` 与 `/api/v1/system/pipeline/verify` 已可供系统状态页使用 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -49,6 +50,8 @@
 | 2026-05-06 | 初始化 API 模块 DEV 文档 | `app/api/DEV.md` | 建立模块开发维护基线 | 待后续按实际开发持续更新 |
 | 2026-05-14 | 日志查询路由与 schema 对齐：`LogSearchRequest` 更名为 `LogQueryRequest` | `app/api/v1/logs.py` | 修复启动期 ImportError，与 `app/schemas/log.py` 一致 | 无 |
 | 2026-05-14 | 恢复被基础版本覆盖的系统状态接口 | `app/api/v1/system.py` | `/status` 重新返回 `kafka`、`elasticsearch`、`docker`、`containers`、`services`，并恢复 `/containers` | 需重启当前 8000 后端进程后浏览器才能命中新代码 |
+| 2026-05-18 | 新增全链路验证 API | `app/api/v1/system.py` | `POST /system/pipeline/verify` 调用 service 执行 `verify_log_pipeline_full` 并返回结构化节点状态 | 验证耗时取决于 Kafka/Logstash/ES 当前状态 |
+| 2026-05-19 | 全链路验证 API 支持多线程参数 | `app/api/v1/system.py` | `PipelineVerifyRequest.workers` 透传到验证 service，覆盖多线程生产验证 | workers 当前由 schema 限制在 1~8 |
 
 ## 2026-05-13 补充：开发者容器状态 API
 

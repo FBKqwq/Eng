@@ -16,6 +16,9 @@
 ## 4. 已实现功能清单
 - 已存在日志与诊断两类 schema 文件。
 - 已形成基础请求/响应契约载体。
+- `DiagnosisRequest` 已补充 `keyword` 字段，兼容诊断页自由输入与规则分流。
+- `PipelineVerifyRequest/Response` 已定义，用于系统状态页展示多线程全链路验证节点与终端输出。
+- `WebServerLog` 已按 Nginx access/error log 常见字段补齐，纳入 `LogType.web_server` 与 `AnyLog`。
 
 ## 5. 待开发功能清单（P0-P3）
 - P0：统一通用响应结构与错误结构。
@@ -26,7 +29,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Schemas | 可用但需完善 | 2026-05-06 | codex | 中 | 基础模型已存在，通用模型待补齐 |
+| Schemas | 可用但需完善 | 2026-05-19 | codex | 中 | 诊断请求、全链路验证响应和 Nginx Web Server 日志契约已补齐，通用错误结构仍待收敛 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -43,6 +46,10 @@
 | 时间 | 修改内容 | 涉及文件 | 当前结果 | 遗留问题 |
 |---|---|---|---|---|
 | 2026-05-06 | 初始化 Schemas 模块 DEV 文档 | `app/schemas/DEV.md` | 建立契约维护规范 | 待后续随功能更新同步维护 |
+| 2026-05-18 | 补齐诊断关键词字段 | `app/schemas/diagnosis.py` | `DiagnosisRequest` 与诊断服务规则输入对齐，接口不再因缺失字段崩溃 | 后续需继续统一响应模型 |
+| 2026-05-18 | 新增全链路验证响应契约 | `app/schemas/system.py` | 系统状态页可读取 `success`、`nodes`、`stdout/stderr` 展示验证结果 | 后续可抽出统一任务执行响应基类 |
+| 2026-05-19 | 全链路验证请求支持 workers | `app/schemas/system.py` | `PipelineVerifyRequest.workers` 可控制验证脚本并发生成与发送线程数 | 当前限制 1~8 个 worker |
+| 2026-05-19 | 补齐 Nginx Web Server 日志契约 | `app/schemas/log.py` | 新增 `LogType.web_server`、`WebServerLog`、Nginx log kind / upstream cache / scheme 等枚举，Pydantic 实例化验证通过 | 后续需在 simulation 生成器中实际产出该类日志 |
 
 ## 2026-05-13 补充：System / Docker 状态响应 Schema
 

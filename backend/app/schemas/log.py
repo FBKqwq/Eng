@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 日志分为六大类：
     “行为日志
     应用日志
+    Web 服务器日志
     性能日志
     安全日志
     基础设施日志
@@ -30,6 +31,10 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
         下游服务
         数据库耗时
         Redis 命中情况
+    Web 服务器日志：
+        Nginx access/error log 标准字段
+        客户端 IP、request line、状态码、响应体字节数
+        referer、user agent、request_time、upstream 响应信息
     安全日志：
         风险等级
         命中了什么规则
@@ -54,6 +59,7 @@ class LogLevel(str, Enum):
 class LogType(str, Enum):
     behavior = "behavior"
     application = "application"
+    web_server = "web_server"
     performance = "performance"
     security = "security"
     infrastructure = "infrastructure"
@@ -86,6 +92,27 @@ class HttpMethod(str, Enum):
     PUT = "PUT"
     PATCH = "PATCH"
     DELETE = "DELETE"
+
+
+class HttpScheme(str, Enum):
+    http = "http"
+    https = "https"
+
+
+class NginxLogKind(str, Enum):
+    access = "access"
+    error = "error"
+
+
+class NginxUpstreamStatus(str, Enum):
+    hit = "HIT"
+    miss = "MISS"
+    bypass = "BYPASS"
+    expired = "EXPIRED"
+    stale = "STALE"
+    updating = "UPDATING"
+    revalidated = "REVALIDATED"
+    unavailable = "-"
 
 
 class BehaviorAction(str, Enum):
@@ -273,6 +300,48 @@ class ApplicationLog(LogBase):
     inventory_id: Optional[str] = None
 
 
+class WebServerLog(LogBase):
+    """Nginx 风格 Web Server 日志契约，兼容 access log 与 error log。"""
+
+    log_type: Literal[LogType.web_server] = LogType.web_server
+
+    nginx_log_kind: NginxLogKind = Field(default=NginxLogKind.access, description="Nginx 日志类型：access 或 error")
+    remote_addr: str = Field(..., description="客户端 IP，对应 Nginx $remote_addr")
+    remote_user: Optional[str] = Field(default=None, description="认证用户，对应 $remote_user，未认证通常为 -")
+    time_local: Optional[str] = Field(default=None, description="Nginx 原始本地时间，对应 $time_local")
+    request: str = Field(..., description="完整请求行，例如 GET /api/order HTTP/1.1，对应 $request")
+    request_method: HttpMethod = Field(..., description="HTTP 方法，对应 $request_method")
+    request_uri: str = Field(..., description="原始请求 URI，对应 $request_uri")
+    uri: Optional[str] = Field(default=None, description="规范化 URI，对应 $uri")
+    query_string: Optional[str] = Field(default=None, description="查询字符串，对应 $query_string")
+    server_protocol: str = Field(default="HTTP/1.1", description="协议版本，对应 $server_protocol")
+    status_code: int = Field(..., ge=100, le=599, description="HTTP 响应码，对应 $status")
+    body_bytes_sent: int = Field(default=0, ge=0, description="响应体字节数，对应 $body_bytes_sent")
+    bytes_sent: Optional[int] = Field(default=None, ge=0, description="总发送字节数，对应 $bytes_sent")
+    request_length: Optional[int] = Field(default=None, ge=0, description="请求长度，对应 $request_length")
+    http_referer: Optional[str] = Field(default=None, description="来源页，对应 $http_referer")
+    http_user_agent: Optional[str] = Field(default=None, description="User-Agent，对应 $http_user_agent")
+    http_x_forwarded_for: Optional[str] = Field(default=None, description="代理链路客户端 IP，对应 $http_x_forwarded_for")
+    host_header: Optional[str] = Field(default=None, description="Host 请求头，对应 $host")
+    server_name: Optional[str] = Field(default=None, description="Nginx server_name，对应 $server_name")
+    scheme: Optional[HttpScheme] = Field(default=None, description="请求协议，对应 $scheme")
+    request_time: Optional[float] = Field(default=None, ge=0, description="完整请求耗时秒，对应 $request_time")
+    upstream_addr: Optional[str] = Field(default=None, description="上游地址，对应 $upstream_addr")
+    upstream_status: Optional[int] = Field(default=None, ge=100, le=599, description="上游响应码，对应 $upstream_status")
+    upstream_response_time: Optional[float] = Field(default=None, ge=0, description="上游响应耗时秒，对应 $upstream_response_time")
+    upstream_connect_time: Optional[float] = Field(default=None, ge=0, description="连接上游耗时秒，对应 $upstream_connect_time")
+    upstream_header_time: Optional[float] = Field(default=None, ge=0, description="接收上游响应头耗时秒，对应 $upstream_header_time")
+    upstream_cache_status: Optional[NginxUpstreamStatus] = Field(default=None, description="上游缓存状态，对应 $upstream_cache_status")
+    connection: Optional[str] = Field(default=None, description="连接序号，对应 $connection")
+    connection_requests: Optional[int] = Field(default=None, ge=0, description="同连接请求数，对应 $connection_requests")
+    pipe: Optional[str] = Field(default=None, description="请求是否流水线，对应 $pipe")
+    gzip_ratio: Optional[float] = Field(default=None, ge=0, description="gzip 压缩率，对应 $gzip_ratio")
+    ssl_protocol: Optional[str] = Field(default=None, description="TLS 协议版本，对应 $ssl_protocol")
+    ssl_cipher: Optional[str] = Field(default=None, description="TLS cipher，对应 $ssl_cipher")
+    error_level: Optional[str] = Field(default=None, description="Nginx error log 级别，如 error、warn、crit")
+    error_message: Optional[str] = Field(default=None, description="Nginx error log 原始错误信息")
+
+
 class PerformanceLog(LogBase):
     log_type: Literal[LogType.performance] = LogType.performance
 
@@ -357,6 +426,7 @@ class AuditLog(LogBase):
 AnyLog = Union[
     BehaviorLog,
     ApplicationLog,
+    WebServerLog,
     PerformanceLog,
     SecurityLog,
     InfrastructureLog,

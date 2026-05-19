@@ -104,6 +104,7 @@ class DiagnosisRequest(BaseModel):
     trace_id: Optional[str] = Field(default=None, description="调用链ID")
     service_name: Optional[str] = Field(default=None, description="目标服务名")
     error_code: Optional[str] = Field(default=None, description="目标错误码")
+    keyword: Optional[str] = Field(default=None, description="诊断关键词，兼容前端自由输入")
     time_range_start: Optional[datetime] = Field(default=None, description="时间范围起点")
     time_range_end: Optional[datetime] = Field(default=None, description="时间范围终点")
     include_context_logs: bool = Field(default=True, description="是否包含上下文日志")

@@ -63,6 +63,7 @@ VITE_KIBANA_URL=http://localhost:5601
 | --- | --- | --- | --- |
 | GET | `getApiHealth()` | `/api/v1/health` | 后端 API 探活 |
 | GET | `getSystemStatus()` | `/api/v1/system/status` | 系统、Kafka、ES、Docker 容器状态 |
+| POST | `verifyPipeline()` | `/api/v1/system/pipeline/verify` | 触发后端多线程全链路验证并返回节点状态与终端输出 |
 
 `/api/v1/system/status` 需要包含：
 
@@ -89,6 +90,7 @@ VITE_KIBANA_URL=http://localhost:5601
 - Logstash：容器状态与端口。
 - Kibana：容器状态与 Kibana URL。
 - 配置快照：Kafka bootstrap servers、Kafka topic、ES hosts、ES index pattern。
+- 全链路验证：通过“快速检测”触发后端多线程 `verify_log_pipeline_full`，展示“日志生产 -> Kafka 接收 -> Logstash 处理 -> Elasticsearch 检索”四个节点状态，并显示验证终端输出。
 
 兜底规则：
 
@@ -146,8 +148,8 @@ npm.cmd run build
 | 模块 | 当前状态 | 风险 | 说明 |
 | --- | --- | --- | --- |
 | 路由/Layout | 可用 | 低 | `/` 平台路由和 `/temp/developer` 手动入口可用 |
-| API wrapper | 可用 | 低 | system.js 包含 health 和 status 双 GET |
-| 系统状态页 | 可用 | 中 | 可展示 Kafka/ES/Docker 容器状态，ES health 依赖后端认证 |
+| API wrapper | 可用 | 低 | system.js 包含 health/status 查询与 pipeline verify |
+| 系统状态页 | 可用 | 中 | 可展示 Kafka/ES/Docker 容器状态与全链路验证结果，ES health 依赖后端认证 |
 | 日志监控页 | 占位/待增强 | 中 | 当前偏 Kibana 跳转，搜索列表能力待完善 |
 | 智能诊断页 | 初步可用 | 中 | 表单与结果卡已有，依赖后端诊断能力 |
 | 实验结果页 | 占位 | 中 | 后续展示性能测试和案例分析 |
@@ -166,3 +168,5 @@ npm.cmd run build
 | --- | --- | --- | --- | --- |
 | 2026-05-14 | 重建前端目录级 DEV 文档 | `frontend/DEV.md` | 清理过期 `/state/` 约定，记录当前路由、API、系统状态展示规则 | 后续页面增强需持续维护 |
 | 2026-05-14 | 恢复系统状态页和 `/temp/developer` | `src/views/system/index.vue`、`src/router/index.js`、`src/api/system.js`、`src/utils/systemStatus.js` | `/temp/developer` 可展示 Kafka、ES、Logstash、Kibana 容器状态 | ES cluster health 认证后续处理 |
+| 2026-05-18 | 系统状态页新增全链路快速检测面板 | `src/views/system/index.vue`、`src/api/system.js` | 可触发后端 pipeline verify，展示四节点状态与 `verify_log_pipeline_full` 输出 | 长耗时验证依赖后端接口与 Kafka/ELK 当前运行状态 |
+| 2026-05-19 | 快速检测纳入多线程日志生成验证 | `src/views/system/index.vue` | 默认传 `workers=2`，覆盖多线程日志生产到 ES 命中的链路 | 后续可把 workers 暴露为页面参数 |

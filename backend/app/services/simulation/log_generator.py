@@ -1,12 +1,12 @@
 import random
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
 def _now_ts() -> str:
-    return datetime.now().isoformat()
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _rand_ip() -> str:
@@ -154,6 +154,104 @@ def _build_behavior(trace_id: str) -> dict[str, Any]:
     return rec
 
 
+def _build_web_server(trace_id: str) -> dict[str, Any]:
+    paths = [
+        "/",
+        "/goods/list",
+        "/goods/detail/10086",
+        "/api/goods/list",
+        "/api/search",
+        "/api/order/submit",
+        "/api/pay",
+        "/static/app.js",
+        "/static/main.css",
+    ]
+    methods = ["GET", "GET", "GET", "POST", "POST"]
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/605.1.15 Safari/605.1.15",
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+        "curl/8.4.0",
+        "Googlebot/2.1 (+http://www.google.com/bot.html)",
+    ]
+    upstreams = ["order-service:8000", "search-service:8000", "payment-service:8000", "frontend-static:80"]
+    path = random.choice(paths)
+    method = random.choice(methods)
+    status, error_code = _pick_http_status()
+    if path.startswith("/static/") and status >= 500:
+        status = random.choice([200, 304, 404])
+        error_code = "NOT_FOUND" if status == 404 else ""
+
+    request_time = round(random.uniform(0.003, 2.8 if status < 500 else 6.5), 3)
+    upstream_response_time = None if path.startswith("/static/") else round(max(0.001, request_time - random.uniform(0.001, 0.08)), 3)
+    query = ""
+    if path == "/api/search":
+        query = f"keyword={random.choice(['phone', 'laptop', 'shoes', 'coffee'])}&page={random.randint(1, 5)}"
+    request_uri = f"{path}?{query}" if query else path
+    protocol = random.choice(["HTTP/1.1", "HTTP/2.0"])
+    request_line = f"{method} {request_uri} {protocol}"
+    nginx_log_kind = "error" if status >= 500 and random.random() < 0.35 else "access"
+    message = (
+        f'nginx {nginx_log_kind}: "{request_line}" {status} '
+        f'{int(request_time * 1000)}ms'
+    )
+
+    rec = _base_record(
+        log_type="web_server",
+        event_type=f"nginx_{nginx_log_kind}",
+        service_name=random.choice(["nginx-gateway", "nginx-edge", "openresty-gateway"]),
+        trace_id=trace_id,
+        status=status,
+        response_time_ms=int(request_time * 1000),
+        error_code=error_code,
+        message=message,
+    )
+    rec["nginx_log_kind"] = nginx_log_kind
+    rec["remote_addr"] = rec["client_ip"]
+    rec["remote_user"] = "-" if random.random() < 0.88 else f"user{random.randint(1000, 9999)}"
+    rec["time_local"] = datetime.now().astimezone().strftime("%d/%b/%Y:%H:%M:%S %z")
+    rec["request"] = request_line
+    rec["request_method"] = method
+    rec["request_uri"] = request_uri
+    rec["uri"] = path
+    rec["query_string"] = query or None
+    rec["server_protocol"] = protocol
+    rec["body_bytes_sent"] = random.randint(0, 280000 if path.startswith("/static/") else 48000)
+    rec["bytes_sent"] = rec["body_bytes_sent"] + random.randint(200, 1600)
+    rec["request_length"] = random.randint(120, 4096)
+    rec["http_referer"] = random.choice(["-", "https://shop.example.com/", "https://shop.example.com/search"])
+    rec["http_user_agent"] = random.choice(user_agents)
+    rec["http_x_forwarded_for"] = f"{_rand_ip()}, 172.18.0.{random.randint(2, 254)}" if random.random() < 0.6 else None
+    rec["host_header"] = random.choice(["shop.example.com", "api.shop.example.com", "localhost"])
+    rec["server_name"] = random.choice(["shop.example.com", "api.shop.example.com"])
+    rec["scheme"] = random.choice(["http", "https", "https"])
+    rec["upstream_addr"] = None if path.startswith("/static/") else random.choice(upstreams)
+    rec["upstream_status"] = None if path.startswith("/static/") else status
+    rec["upstream_response_time"] = upstream_response_time
+    rec["upstream_connect_time"] = None if upstream_response_time is None else round(random.uniform(0.001, 0.05), 3)
+    rec["upstream_header_time"] = None if upstream_response_time is None else round(min(upstream_response_time, random.uniform(0.003, 0.2)), 3)
+    rec["upstream_cache_status"] = random.choice(["HIT", "MISS", "BYPASS", "-"]) if method == "GET" else None
+    rec["connection"] = str(random.randint(10000, 99999))
+    rec["connection_requests"] = random.randint(1, 120)
+    rec["pipe"] = random.choice([".", "p"])
+    rec["gzip_ratio"] = round(random.uniform(1.2, 5.0), 2) if path.endswith((".js", ".css")) else None
+    rec["ssl_protocol"] = random.choice(["TLSv1.2", "TLSv1.3"]) if rec["scheme"] == "https" else None
+    rec["ssl_cipher"] = random.choice(["TLS_AES_256_GCM_SHA384", "ECDHE-RSA-AES128-GCM-SHA256"]) if rec["scheme"] == "https" else None
+    rec["error_level"] = "error" if nginx_log_kind == "error" else None
+    rec["error_message"] = (
+        f"upstream timed out while reading response header from upstream {rec['upstream_addr']}"
+        if nginx_log_kind == "error"
+        else None
+    )
+    rec["anomaly_signal"] = status >= 500 or request_time > 3
+    rec["diagnosis_hints"] = (
+        ["检查 Nginx upstream 超时、网关连接数与后端服务响应时间"]
+        if rec["anomaly_signal"]
+        else []
+    )
+    return rec
+
+
 def _build_performance(trace_id: str) -> dict[str, Any]:
     rec = _base_record(
         log_type="performance",
@@ -240,11 +338,12 @@ def build_mock_log() -> dict[str, Any]:
     """生成单条结构化模拟日志，字段与 simulation/DEV.md 对齐，供 Kafka 与下游消费。"""
     trace_id = f"T-{int(time.time() * 1000)}-{uuid.uuid4().hex[:6]}"
     builders = [
-        (_build_application, 52),
-        (_build_behavior, 25),
+        (_build_application, 42),
+        (_build_behavior, 20),
+        (_build_web_server, 18),
         (_build_performance, 10),
         (_build_security, 8),
-        (_build_infrastructure, 5),
+        (_build_infrastructure, 2),
     ]
     fn = random.choices([b[0] for b in builders], weights=[b[1] for b in builders])[0]
     return fn(trace_id)
