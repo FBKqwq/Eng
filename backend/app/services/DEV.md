@@ -8,10 +8,15 @@
 
 | 文件 / 目录 | 职责 |
 | --- | --- |
-| `app/services/elasticsearch/` | Elasticsearch 客户端与日志查询服务 |
+| `app/services/elasticsearch/` | Elasticsearch 客户端、日志查询、**占位** 聚合/上下文/字段目录/索引模板 |
 | `app/services/kafka/` | Kafka 消息生产服务 |
-| `app/services/diagnosis/` | 规则优先的智能诊断分析服务 |
+| `app/services/diagnosis/` | 规则优先诊断；**占位** rule_definitions / match_log |
 | `app/services/simulation/` | 模拟日志生成 |
+| `app/services/langchain/` | **占位** LLM 调用、Prompt、证据压缩、Chain |
+| `app/services/analysis/` | **占位** LangGraph 主图/子图、调度、触发扫描 |
+| `app/services/tools/` | **占位** MCP/Agent 工具薄适配层 |
+| `app/services/report/` | **占位** 分析报告持久化 |
+| `app/services/alert/` | **占位** 预警持久化与去重 |
 | `app/services/docker_status.py` | Docker Compose 容器状态只读查询服务 |
 | `app/services/pipeline_verification.py` | 调用全链路验证任务并转换为前端可展示的节点状态 |
 
@@ -53,3 +58,4 @@
 | 2026-05-14 | 任务层增加 Kafka 消费侧自证脚本 | `tasks/verify_log_kafka_pipeline.py` | 内置 consumer 校验 log_id 闭环 | 与 Logstash 无关，仅 broker 内验证 |
 | 2026-05-18 | 新增全链路验证服务封装 | `app/services/pipeline_verification.py` | 通过子进程复用 `app.tasks.verify_log_pipeline_full`，返回四节点状态、耗时和 stdout/stderr | 属于受控验证任务，仍依赖基础设施在线 |
 | 2026-05-19 | 全链路验证服务透传 workers | `app/services/pipeline_verification.py` | 系统页快速检测可验证多线程生成、Kafka 写入、Logstash 消费与 ES 命中 | 节点状态仍基于脚本输出关键阶段解析 |
+| 2026-06-16 | 按总体规划建立后端框架占位 | `langchain/`、`analysis/`、`tools/`、`report/`、`alert/`、`elasticsearch/` 扩建四文件 | 全部分域物理隔离，函数返回 `placeholder: true` | 待按 M1→M7 里程碑逐步实现 |

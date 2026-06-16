@@ -1,26 +1,68 @@
 <template>
   <div class="layout">
     <aside class="sidebar">
-      <h2>日志分析系统</h2>
-      <nav>
-        <router-link to="/">首页</router-link>
-        <router-link to="/monitor">日志监控</router-link>
-        <router-link to="/diagnosis">智能诊断</router-link>
-        <router-link to="/results">实验结果</router-link>
-        <router-link to="/system">系统状态</router-link>
-      </nav>
+      <div class="brand">
+        <h2>日志分析系统</h2>
+        <p>ELK + Kafka + LangGraph</p>
+      </div>
+      <SidebarTree />
+      <PipelineHealthDot />
     </aside>
-    <main class="main">
-      <router-view />
-    </main>
+    <div class="content">
+      <TopBar />
+      <main class="main">
+        <router-view />
+      </main>
+    </div>
   </div>
 </template>
 
+<script setup>
+import { provideTimeRange } from '../composables/useTimeRange.js'
+import SidebarTree from './components/SidebarTree.vue'
+import TopBar from './components/TopBar.vue'
+import PipelineHealthDot from './components/PipelineHealthDot.vue'
+
+provideTimeRange()
+</script>
+
 <style scoped>
-.layout { display: flex; min-height: 100vh; }
-.sidebar { width: 220px; background: #111827; color: white; padding: 24px; }
-.sidebar nav { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
-.sidebar a { color: #d1d5db; }
-.sidebar a.router-link-active { color: white; font-weight: bold; }
-.main { flex: 1; padding: 24px; }
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--color-sidebar);
+  color: var(--color-sidebar-text);
+}
+.brand {
+  padding: 20px 16px 12px;
+  border-bottom: 1px solid var(--color-sidebar-border);
+}
+.brand h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #fff;
+}
+.brand p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--color-sidebar-text-muted);
+}
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.main {
+  flex: 1;
+  padding: 24px;
+  overflow: auto;
+}
 </style>

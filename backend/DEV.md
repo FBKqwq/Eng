@@ -39,6 +39,11 @@
 | `app/services/kafka/` | Kafka 生产与 broker/topic 状态探测 |
 | `app/services/elasticsearch/` | ES client、日志查询、cluster health 探测 |
 | `app/services/diagnosis/` | 规则分流与诊断能力 |
+| `app/services/langchain/` | **占位** LLM 调用、Prompt、Chain |
+| `app/services/analysis/` | **占位** LangGraph 编排层 |
+| `app/services/tools/` | **占位** MCP/Agent 工具层 |
+| `app/services/report/` | **占位** 分析报告持久化 |
+| `app/services/alert/` | **占位** 预警持久化 |
 | `app/services/simulation/` | 模拟电商日志生成 |
 | `app/tasks/` | 独立运行脚本 |
 | `tests/` | 后端测试 |
@@ -52,8 +57,12 @@
 | GET | `/api/v1/health` | 后端健康检查，返回 `{ "status": "ok" }` |
 | GET | `/api/v1/system/status` | 系统状态综合快照 |
 | GET | `/api/v1/system/containers` | Docker 容器状态快照 |
-| GET/POST | `/api/v1/logs/*` | 日志查询相关接口 |
+| GET/POST | `/api/v1/logs/*` | 日志查询相关接口（含 **占位** `GET /fields`） |
 | POST | `/api/v1/diagnosis` | 智能诊断入口 |
+| GET | `/api/v1/reports/recent` | **占位** 最近分析报告 |
+| GET | `/api/v1/reports/{id}` | **占位** 报告详情 |
+| GET | `/api/v1/alerts/active` | **占位** 活跃预警 |
+| POST | `/api/v1/alerts/{id}/ack` | **占位** 预警确认 |
 
 ### `/api/v1/system/status` 当前契约
 
@@ -150,7 +159,11 @@ curl.exe -i -H "Origin: http://localhost:5173" http://localhost:8000/api/v1/syst
 | 系统状态 | 可用 | 中 | Docker/Kafka 可真实探测；ES health 在配置 `basic_auth` 后可穿透认证 |
 | 全链路验证 | 可用 | 中 | 系统 API 可触发多线程 `verify_log_pipeline_full` 并返回节点状态与终端输出 |
 | 日志查询 | 可用但需继续联调 | 中 | 已接入真实 ES search；依赖 ES 索引与数据 |
-| 智能诊断 | 初步可用/持续扩展 | 中 | 规则优先并可拉取 ES 上下文，复杂链路后续接 LangGraph |
+| 智能诊断 | 初步可用/持续扩展 | 中 | 规则优先并可拉取 ES 上下文；LangChain/LangGraph 框架占位已建立 |
+| LangChain 层 | 占位 | 高 | 八文件骨架；`is_llm_available()` 恒 False |
+| LangGraph 层 | 占位 | 高 | analysis 七文件骨架；未安装 langgraph |
+| MCP/工具层 | 占位 | 高 | tools 六文件 + registry；10 工具名已声明 |
+| 报告/预警 | 占位 | 高 | API 已挂载；analysis-results-* / alerts-* 未建 |
 | 模拟日志 | 可用但需继续增强 | 中 | 已覆盖 Nginx Web Server 日志；模拟日志 `timestamp` 统一输出 UTC `Z` 时间；支持任务层多线程生产并统一写入 Kafka topic |
 
 ## 11. 开发日志
@@ -164,3 +177,4 @@ curl.exe -i -H "Origin: http://localhost:5173" http://localhost:8000/api/v1/syst
 | 2026-05-19 | 新增 Nginx Web Server 日志生成与多线程 Kafka 生产 | `app/services/simulation/log_generator.py`、`app/tasks/run_log_producer.py`、`tests/test_health.py` | `build_mock_log()` 可产出 `web_server`；`--workers` 多线程统一写入 `app-logs` 已验证 | 后续可补指定日志类型与 TPS 控制 |
 | 2026-05-19 | 全链路验证纳入多线程生成测试 | `app/tasks/verify_log_pipeline_full.py`、`app/services/pipeline_verification.py`、`app/schemas/system.py`、`app/api/v1/system.py` | 前端快速检测默认以 2 workers 验证多线程生成到 ES 命中 | 节点解析基于脚本输出关键阶段 |
 | 2026-05-19 | 修复模拟日志时间戳时区问题 | `app/services/simulation/log_generator.py`、`app/services/simulation/DEV.md`、`backend/DEV.md` | 新生成日志的 `timestamp` 为 UTC ISO-8601 `Z` 格式，Nginx `time_local` 保留本地时区偏移，降低 Kibana 相对时间范围查询偏差 | 已写入 ES 的旧日志时间不会回填，需要重新生成新日志验证 |
+| 2026-06-16 | 按总体规划完成后端框架占位更新 | 见 `doc/后端开发总体规划-Services-LangGraph-MCP.md` 全文对应目录 | ES 扩建四模块、langchain/analysis/tools/report/alert 分域占位、API/schema/config 扩展；全部 `placeholder: true` | 待 M1→M7 逐步实现真实逻辑 |

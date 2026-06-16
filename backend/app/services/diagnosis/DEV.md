@@ -6,8 +6,9 @@
 ## 2. 项目模块总览
 | 文件 | 主要职责 |
 |---|---|
-| `app/services/diagnosis/rule_engine.py` | 基于关键词的规则分流与异常类型归类 |
-| `app/services/diagnosis/analyzer.py` | 诊断编排入口：调用规则引擎并组装诊断结果 |
+| `app/services/diagnosis/rule_engine.py` | 规则分流；新增 `match_log` 占位供 MCP/规则子图 |
+| `app/services/diagnosis/rule_definitions.py` | **占位** 声明式规则表 |
+| `app/services/diagnosis/analyzer.py` | 同步诊断门面；复杂任务未来将转交 `analysis/` 层 |
 
 ## 3. 模块职责边界
 - 应该放在这里：规则分流、诊断流程编排、与 LangChain/LangGraph 的对接封装（若实现）。
@@ -21,14 +22,13 @@
 
 ## 5. 待开发功能清单（P0-P3）
 - P0：在 ELK 服务启动后完成真实诊断证据命中联调。
-- P1：规则引擎扩展为可配置规则表或策略文件，避免硬编码关键词。
-- P2：LangChain 调用层封装（prompt、解析、错误处理）。
-- P3：LangGraph 状态机编排与可观测节点日志。
+- P1：规则引擎扩展为读取 `rule_definitions.py` 声明式规则表，输出 `trigger_subgraph` 标记。
+- P2：复杂诊断转交 `analysis/graph_rule.py` 执行入口。
 
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Diagnosis Service | 可用但需完善 | 2026-05-18 | codex | 中 | 规则分流与 ES 上下文入口已接通；LLM/图未接通 |
+| Diagnosis Service | 框架占位已扩展 | 2026-06-16 | elk-backend-agent | 高 | classify_by_rules 仍可用；match_log/rule_definitions 为占位 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -46,3 +46,4 @@
 |---|---|---|---|---|
 | 2026-05-11 | 初始化 Diagnosis 模块 DEV 文档 | `app/services/diagnosis/DEV.md` | 建立诊断模块维护基线 | 待代码变更后按 13.3 同步更新各表 |
 | 2026-05-18 | 修复诊断请求字段不匹配并接入 ES 上下文查询 | `app/schemas/diagnosis.py`、`app/services/diagnosis/analyzer.py`、`app/services/diagnosis/rule_engine.py` | `/api/v1/diagnosis` 不再因 `payload.keyword` 缺失崩溃，可返回规则诊断与上下文摘要 | 当前仍未接 LangChain/LangGraph |
+| 2026-06-16 | 新增 rule_definitions 与 match_log 占位 | `rule_definitions.py`、`rule_engine.py` | 为 M1/M5 规则子图预留接口 | 硬编码 classify_by_rules 仍为主路径 |

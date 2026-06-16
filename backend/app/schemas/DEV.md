@@ -8,6 +8,8 @@
 |---|---|
 | `app/schemas/log.py` | 日志查询相关请求与响应结构 |
 | `app/schemas/diagnosis.py` | 诊断请求与诊断结果结构 |
+| `app/schemas/report.py` | **占位** 分析报告列表与详情契约 |
+| `app/schemas/alert.py` | **占位** 预警列表与确认契约 |
 
 ## 3. 模块职责边界
 - 应该放在这里：Pydantic 模型、字段约束、接口契约定义。
@@ -29,7 +31,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Schemas | 可用但需完善 | 2026-05-19 | codex | 中 | 诊断请求、全链路验证响应和 Nginx Web Server 日志契约已补齐，通用错误结构仍待收敛 |
+| Schemas | 框架占位已扩展 | 2026-06-16 | elk-backend-agent | 中 | report/alert 占位契约已建立 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -50,6 +52,7 @@
 | 2026-05-18 | 新增全链路验证响应契约 | `app/schemas/system.py` | 系统状态页可读取 `success`、`nodes`、`stdout/stderr` 展示验证结果 | 后续可抽出统一任务执行响应基类 |
 | 2026-05-19 | 全链路验证请求支持 workers | `app/schemas/system.py` | `PipelineVerifyRequest.workers` 可控制验证脚本并发生成与发送线程数 | 当前限制 1~8 个 worker |
 | 2026-05-19 | 补齐 Nginx Web Server 日志契约 | `app/schemas/log.py` | 新增 `LogType.web_server`、`WebServerLog`、Nginx log kind / upstream cache / scheme 等枚举，Pydantic 实例化验证通过 | 后续需在 simulation 生成器中实际产出该类日志 |
+| 2026-06-16 | 新增 report/alert 占位 schema | `schemas/report.py`、`schemas/alert.py` | 列表/详情/确认响应模型就位 | 待 M4/M5 填充真实字段 |
 
 ## 2026-05-13 补充：System / Docker 状态响应 Schema
 

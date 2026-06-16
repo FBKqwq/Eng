@@ -28,6 +28,17 @@ class Settings(BaseSettings):
 
     log_producer_interval_seconds: int = 1
 
+    # LangChain / LangGraph 分析编排（占位配置，待 M3+ 使用）
+    llm_provider: str = "openai"
+    llm_api_key: str = ""
+    llm_base_url: str = ""
+    llm_default_model: str = "gpt-4o-mini"
+    llm_analysis_model: str = "gpt-4o"
+    llm_timeout_seconds: int = 30
+    llm_temperature: float = 0.2
+    analysis_schedule_minutes: int = 15
+    trigger_scan_seconds: int = 30
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

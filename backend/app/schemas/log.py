@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 """
 负责规定：一条日志长什么样，怎么查，怎么回
-日志分为六大类：
+日志分为七大类：
     “行为日志
     应用日志
     Web 服务器日志

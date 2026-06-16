@@ -198,7 +198,7 @@ netstat -ano | findstr :9092
 docker compose up -d kafka logstash
 ```
 
-**Logstash 消费 Kafka**：`logstash/pipeline/logstash.conf` 已增加 `kafka` input（环境变量 `LS_PIPELINE_KAFKA_BOOTSTRAP_SERVERS` 默认 `kafka:29092`，`LS_PIPELINE_KAFKA_TOPIC` 默认 `app-logs`），带 `pipeline_kafka_app_logs` 标签的事件写入索引 `app-logs-%{+YYYY.MM.dd}`；Beats/TCP 入口仍写入默认索引模式。
+**Logstash 消费 Kafka**：`logstash/pipeline/logstash.conf` 已增加 `kafka` input（环境变量 `LS_PIPELINE_KAFKA_BOOTSTRAP_SERVERS` 默认 `kafka:29092`，`LS_PIPELINE_KAFKA_TOPIC` 默认 `app-logs`）。带 `pipeline_kafka_app_logs` 标签的事件按消息内 `log_type` 写入拆分索引 `app-logs-{log_type}-YYYY.MM.dd`（例如 `app-logs-application-2026.06.16`、`app-logs-web_server-2026.06.16`）；缺 `log_type` 时写入 `app-logs-unknown-YYYY.MM.dd`。Beats/TCP 入口仍写入默认索引模式。修改 pipeline 后执行 `docker compose restart logstash` 生效。
 
 端到端冒烟（先发几条日志，再在 ES 中查索引）：
 
@@ -218,8 +218,11 @@ python -m app.tasks.verify_log_pipeline_full --count 2
 
 ```powershell
 curl.exe -s -u elastic:你的ES密码 -k "https://localhost:9200/_cat/indices/app-logs-*?v"
+curl.exe -s -u elastic:你的ES密码 -k "https://localhost:9200/app-logs-application-*/_search?size=2&pretty"
 curl.exe -s -u elastic:你的ES密码 -k "https://localhost:9200/app-logs-*/_search?size=2&pretty"
 ```
+
+拆分索引生效后，新日志应出现在 `app-logs-{log_type}-日期` 形式的索引中；历史统一索引 `app-logs-日期` 可能仍保留改路由前的数据。
 
 若 `app-logs-*` 索引无法创建、Logstash 日志中出现 `logstash_internal` 对 `indices:admin/auto_create` 无权限，说明需刷新内置角色：已在本仓库 `setup/roles/logstash_writer.json` 中为 `app-logs-*` 增加与 `logstash-*` 相同的写索引权限。修改后请在 `location` 目录执行：
 
