@@ -5,4 +5,4 @@ pydantic-settings==2.10.1
 kafka-python==2.2.15
 elasticsearch==9.1.0
 python-dotenv==1.1.1
-httpx==0.28.1
+langchain-core>=0.3,<0.4
