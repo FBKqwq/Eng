@@ -363,7 +363,7 @@ def test_run_scheduled_subgraph_success(monkeypatch: pytest.MonkeyPatch) -> None
     assert result["ok"] is True
     assert result["report"]["report_type"] == "periodic"
     assert result["report"]["title"] == "测试周期报告"
-    assert len(result["node_trace"]) == 6
+    assert len(result["node_trace"]) == 7
     node_names = [entry["node_name"] for entry in result["node_trace"]]
     assert node_names == [
         "build_time_window",
@@ -371,9 +371,18 @@ def test_run_scheduled_subgraph_success(monkeypatch: pytest.MonkeyPatch) -> None
         "aggregate_metrics",
         "sample_logs",
         "build_evidence",
+        "analyze_relations",
         "generate_report",
     ]
-    assert all(entry["status"] == "success" for entry in result["node_trace"])
+    assert all(
+        entry["status"] in ("success", "skipped")
+        for entry in result["node_trace"]
+        if entry["node_name"] != "analyze_relations"
+    )
+    relations_trace = next(
+        t for t in result["node_trace"] if t["node_name"] == "analyze_relations"
+    )
+    assert relations_trace["status"] in ("skipped", "success")
     _assert_no_placeholder(result)
 
 

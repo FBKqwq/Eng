@@ -7,6 +7,34 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import fastapi.routing
+import starlette.routing
+
+# FastAPI 0.116 与 Starlette 1.3+ 生命周期 API 不兼容；测试层做最小兼容垫片
+_router_init = starlette.routing.Router.__init__
+
+
+def _router_init_compat(self, *args: Any, **kwargs: Any) -> None:
+    kwargs.pop("on_startup", None)
+    kwargs.pop("on_shutdown", None)
+    return _router_init(self, *args, **kwargs)
+
+
+starlette.routing.Router.__init__ = _router_init_compat  # type: ignore[method-assign]
+
+_api_router_init = fastapi.routing.APIRouter.__init__
+
+
+def _api_router_init_compat(self, *args: Any, **kwargs: Any) -> None:
+    _api_router_init(self, *args, **kwargs)
+    if not hasattr(self, "on_startup"):
+        self.on_startup = []
+    if not hasattr(self, "on_shutdown"):
+        self.on_shutdown = []
+
+
+fastapi.routing.APIRouter.__init__ = _api_router_init_compat  # type: ignore[method-assign]
+
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

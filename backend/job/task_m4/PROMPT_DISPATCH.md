@@ -164,7 +164,7 @@ flowchart LR
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M4-01**
+- 任务编号：**M4-01** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m4/M4-01-report_service.md`
 - 编排说明：`location/backend/job/task_m4/README.md`
 - 总体规划：`doc/后端开发总体规划-Services-LangGraph-MCP.md` §1.3 report 域
@@ -212,7 +212,7 @@ AC-01~AC-05（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M4-02**
+- 任务编号：**M4-02** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m4/M4-02-analysis_schemas.md`
 - 总体规划：`doc/后端开发总体规划-Services-LangGraph-MCP.md` §2.3 / §2.6
 
@@ -256,7 +256,7 @@ AC-01~AC-04（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M4-03**
+- 任务编号：**M4-03** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m4/M4-03-analysis_state.md`
 - 总体规划：`doc/后端开发总体规划-Services-LangGraph-MCP.md` §2.2
 
@@ -300,7 +300,7 @@ AC-01~AC-04（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M4-04**
+- 任务编号：**M4-04** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m4/M4-04-graph_scheduled.md`
 - 总体规划：`doc/后端开发总体规划-Services-LangGraph-MCP.md` §2.4
 
@@ -356,7 +356,7 @@ AC-01~AC-05（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M4-05**
+- 任务编号：**M4-05** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m4/M4-05-reports_api.md`
 
 ## STATUS.md（进度与依赖真相源）
@@ -407,7 +407,7 @@ AC-01~AC-04（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M4-06**
+- 任务编号：**M4-06** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m4/M4-06-scheduler.md`
 - 总体规划：`doc/后端开发总体规划-Services-LangGraph-MCP.md` §2.4 / §2.6
 
@@ -458,7 +458,7 @@ AC-01~AC-05（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M4-07**
+- 任务编号：**M4-07** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m4/M4-07-run_scheduler.md`
 
 ## STATUS.md（进度与依赖真相源）
@@ -505,7 +505,7 @@ AC-01~AC-03（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M4-08**
+- 任务编号：**M4-08** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m4/M4-08-test_scheduled.md`
 
 ## STATUS.md（进度与依赖真相源）
@@ -549,7 +549,7 @@ AC-01~AC-04（见任务文档）；`pytest tests/test_m4_scheduled.py -v` 全绿
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M4-09**
+- 任务编号：**M4-09** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m4/M4-09-dev_docs.md`
 
 ## STATUS.md（进度与依赖真相源）

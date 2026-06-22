@@ -279,7 +279,8 @@ def test_registry_default_read_tools_count() -> None:
     tools = get_langchain_tools()
     names = [tool.name for tool in tools]
 
-    assert len(tools) == 8
+    # M2 第一阶段 8 个读类 + M7 第二阶段 6 个读类 = 14 个读类工具
+    assert len(tools) == 14
     assert "analysis_write_report" not in names
     assert "alert_write_event" not in names
     assert "es_search_logs" in names
@@ -290,7 +291,8 @@ def test_registry_include_write_tools_count() -> None:
     tools = get_langchain_tools(include_write_tools=True)
     names = [tool.name for tool in tools]
 
-    assert len(tools) == 10
+    # 14 个读类 + 2 个写类（analysis_write_report / alert_write_event）= 16
+    assert len(tools) == 16
     assert "analysis_write_report" in names
     assert "alert_write_event" in names
 
@@ -298,9 +300,9 @@ def test_registry_include_write_tools_count() -> None:
 def test_list_registered_tool_names_stable_order() -> None:
     names = list_registered_tool_names()
 
-    assert len(names) == 10
+    assert len(names) == 16
     assert names[0] == "es_search_logs"
-    assert names[-1] == "rule_match_log"
+    assert names[-1] == "alert_list_active"
     assert names == [
         "es_search_logs",
         "es_aggregate_metrics",
@@ -312,6 +314,12 @@ def test_list_registered_tool_names_stable_order() -> None:
         "alert_check_duplicate",
         "system_health_check",
         "rule_match_log",
+        "es_get_business_funnel",
+        "es_detect_traffic_peak",
+        "es_compare_time_windows",
+        "kibana_generate_link",
+        "report_list_recent",
+        "alert_list_active",
     ]
 
 

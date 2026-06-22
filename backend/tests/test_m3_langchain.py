@@ -129,10 +129,13 @@ def test_get_prompt_non_placeholder_templates(name: str) -> None:
     assert len(template) > 50
 
 
-def test_get_prompt_relation_is_m7_placeholder() -> None:
-    """relation 模板为 M7 占位说明。"""
+def test_get_prompt_relation_is_production_template() -> None:
+    """relation 模板已在 M7 投产，不再是占位说明。"""
     template = prompts.get_prompt("relation")
-    assert "M7" in template
+    assert template
+    assert not template.startswith("[M7")
+    assert "placeholder" not in template.lower()
+    assert len(template) > 50
 
 
 def test_get_prompt_unknown_returns_empty() -> None:
