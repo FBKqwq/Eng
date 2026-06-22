@@ -167,7 +167,7 @@ M3-08 与 M3-09 可在 M3-06/07 合并后并行派发。不要自己写业务代
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M3-01**
+- 任务编号：**M3-01** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m3/M3-01-llm_manager.md`
 - 编排说明：`location/backend/job/task_m3/README.md`
 - 总体规划：`doc/后端开发总体规划-Services-LangGraph-MCP.md` §2.6 / §2.7
@@ -227,7 +227,7 @@ python -c "from app.services.langchain.llm_manager import is_llm_available, invo
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M3-02**
+- 任务编号：**M3-02** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m3/M3-02-prompts.md`
 - 总体规划：`doc/后端开发总体规划-Services-LangGraph-MCP.md` §2.6
 
@@ -275,7 +275,7 @@ AC-01~AC-04（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M3-03**
+- 任务编号：**M3-03** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m3/M3-03-output_parsers.md`
 
 ## STATUS.md（进度与依赖真相源）
@@ -321,7 +321,7 @@ AC-01~AC-04（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M3-04**
+- 任务编号：**M3-04** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m3/M3-04-evidence_builder.md`
 - 总体规划：`doc/后端开发总体规划-Services-LangGraph-MCP.md` §2.6
 
@@ -369,7 +369,7 @@ AC-01~AC-05（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M3-05**
+- 任务编号：**M3-05** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m3/M3-05-chain_schemas.md`
 
 ## STATUS.md（进度与依赖真相源）
@@ -415,7 +415,7 @@ AC-01~AC-04（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M3-06**
+- 任务编号：**M3-06** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m3/M3-06-report_chain.md`
 - 总体规划：`doc/后端开发总体规划-Services-LangGraph-MCP.md` §2.4 generate_report
 
@@ -468,7 +468,7 @@ AC-01~AC-04（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M3-07**
+- 任务编号：**M3-07** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m3/M3-07-diagnosis_chain.md`
 - 总体规划：`doc/后端开发总体规划-Services-LangGraph-MCP.md` §2.5 infer_root_cause
 
@@ -519,7 +519,7 @@ AC-01~AC-04（见任务文档）
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M3-08**
+- 任务编号：**M3-08** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m3/M3-08-test_langchain.md`
 
 ## STATUS.md（进度与依赖真相源）
@@ -563,7 +563,7 @@ AC-01~AC-04（见任务文档）；`pytest tests/test_m3_langchain.py -v` 全绿
 /elk-backend-agent
 
 ## 任务标识
-- 任务编号：**M3-09**
+- 任务编号：**M3-09** (作为会话窗口名称)
 - 任务文档：`location/backend/job/task_m3/M3-09-langchain_dev.md`
 
 ## STATUS.md（进度与依赖真相源）

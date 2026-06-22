@@ -13,7 +13,7 @@ from typing import Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from app.services.tools import alert_tools, elasticsearch_tools, report_tools, rule_tools, system_tools
+from app.services.tools import alert_tools, elasticsearch_tools, kibana_tools, report_tools, rule_tools, system_tools
 
 # 稳定注册顺序（与 list_registered_tool_names 一致）
 _TOOL_NAMES: list[str] = [
@@ -27,6 +27,12 @@ _TOOL_NAMES: list[str] = [
   "alert_check_duplicate",
   "system_health_check",
   "rule_match_log",
+  "es_get_business_funnel",
+  "es_detect_traffic_peak",
+  "es_compare_time_windows",
+  "kibana_generate_link",
+  "report_list_recent",
+  "alert_list_active",
 ]
 
 _WRITE_TOOL_NAMES: frozenset[str] = frozenset({"analysis_write_report", "alert_write_event"})
@@ -153,13 +159,55 @@ def _all_tool_specs() -> list[tuple[str, str, Callable[..., dict[str, Any]], typ
       rule_tools.RuleMatchLogInput,
       True,
     ),
+    (
+      "es_get_business_funnel",
+      "【读】行为漏斗洞察，统计各环节转化与流失。",
+      elasticsearch_tools.es_get_business_funnel,
+      elasticsearch_tools.EsGetBusinessFunnelInput,
+      True,
+    ),
+    (
+      "es_detect_traffic_peak",
+      "【读】请求高峰定位，识别时间桶峰值与 peak_bucket。",
+      elasticsearch_tools.es_detect_traffic_peak,
+      elasticsearch_tools.EsDetectTrafficPeakInput,
+      True,
+    ),
+    (
+      "es_compare_time_windows",
+      "【读】双时间窗口指标对比，输出环比变化。",
+      elasticsearch_tools.es_compare_time_windows,
+      elasticsearch_tools.EsCompareTimeWindowsInput,
+      True,
+    ),
+    (
+      "kibana_generate_link",
+      "【读】离线拼装 Kibana Discover 跳转链接，不访问网络。",
+      kibana_tools.kibana_generate_link,
+      kibana_tools.KibanaGenerateLinkInput,
+      True,
+    ),
+    (
+      "report_list_recent",
+      "【读】查询最近分析报告列表。",
+      report_tools.report_list_recent,
+      report_tools.ReportListRecentInput,
+      True,
+    ),
+    (
+      "alert_list_active",
+      "【读】查询当前活跃预警事件列表。",
+      alert_tools.alert_list_active,
+      alert_tools.AlertListActiveInput,
+      True,
+    ),
   ]
 
 
 def get_langchain_tools(*, include_write_tools: bool = False) -> list[StructuredTool]:
   """返回进程内 LangChain StructuredTool 列表。
 
-  默认仅暴露读类工具（1~5、8~10）；``include_write_tools=True`` 时追加写类工具 6、7。
+  默认仅暴露读类工具（1~5、8~10、11~16）；``include_write_tools=True`` 时追加写类工具 6、7。
   """
   tools: list[StructuredTool] = []
   for name, description, func, args_schema, model_bound in _all_tool_specs():
@@ -177,11 +225,47 @@ def get_langchain_tools(*, include_write_tools: bool = False) -> list[Structured
   return tools
 
 
+def _structured_tool_to_mcp_callable(lc_tool: StructuredTool) -> Callable[..., dict[str, Any]]:
+  """将 LangChain StructuredTool 适配为 FastMCP 可注册的可调用对象（避免 **kwargs 签名）。"""
+
+  schema = lc_tool.args_schema
+  if schema is None:
+
+    def _runner() -> dict[str, Any]:
+      return lc_tool.invoke({})
+
+    _runner.__name__ = lc_tool.name
+    _runner.__doc__ = lc_tool.description or ""
+    return _runner
+
+  input_schema = schema
+
+  def _runner(params: input_schema) -> dict[str, Any]:  # type: ignore[name-defined]
+    return lc_tool.invoke(params.model_dump())
+
+  _runner.__name__ = lc_tool.name
+  _runner.__doc__ = lc_tool.description or ""
+  _runner.__annotations__ = {"params": input_schema, "return": dict[str, Any]}
+  return _runner
+
+
 def create_mcp_server() -> Any:
-  """基于 FastMCP 创建 MCP Server（M7 实装，当前占位）。"""
-  raise NotImplementedError("create_mcp_server 属 M7 里程碑，待 FastMCP 接入后实装")
+  """基于 FastMCP 创建 MCP Server，仅暴露读类工具。
+
+  fastmcp 未安装时返回 ``{"ok": False, "error": "fastmcp 未安装"}``，不抛异常。
+  成功时返回 FastMCP 实例，由 task 层调用 ``server.run()`` 常驻。
+  """
+  try:
+    from fastmcp import FastMCP
+  except ImportError:
+    return {"ok": False, "error": "fastmcp 未安装"}
+
+  mcp = FastMCP("elk-log-analysis")
+  for lc_tool in get_langchain_tools(include_write_tools=False):
+    mcp.add_tool(_structured_tool_to_mcp_callable(lc_tool))
+  return mcp
 
 
 def list_registered_tool_names() -> list[str]:
-  """返回已注册工具名称（稳定顺序，共 10 个）。"""
+  """返回已注册工具名称（稳定顺序，共 16 个）。"""
   return list(_TOOL_NAMES)

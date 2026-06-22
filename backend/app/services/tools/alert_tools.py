@@ -7,9 +7,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.services.alert import alert_service
+
+MAX_LIST_LIMIT = 50
 from app.services.alert import dedup
 
 
@@ -20,6 +22,10 @@ class WriteAlertInput(BaseModel):
 class CheckDuplicateInput(BaseModel):
   alert_candidate: dict[str, Any]
   bucket_minutes: int = 10
+
+
+class AlertListActiveInput(BaseModel):
+  limit: int = Field(default=50, le=MAX_LIST_LIMIT)
 
 
 def alert_write_event(params: WriteAlertInput) -> dict[str, Any]:
@@ -56,12 +62,20 @@ def alert_check_duplicate(params: CheckDuplicateInput) -> dict[str, Any]:
     }
 
 
-def alert_list_active(limit: int = 50) -> dict[str, Any]:
-  """工具 16：查询活跃预警（第二阶段，尚未实装）。"""
-  return {
-    "ok": False,
-    "tool": "alert_list_active",
-    "items": [],
-    "limit": limit,
-    "message": "alert_list_active 属第二阶段，尚未实装",
-  }
+def alert_list_active(params: AlertListActiveInput) -> dict[str, Any]:
+  """工具 16：查询活跃预警（只读，薄包装 alert_service.list_active_alerts）。"""
+  tool = "alert_list_active"
+  try:
+    result = alert_service.list_active_alerts(limit=params.limit)
+    response: dict[str, Any] = {**result, "tool": tool}
+    response.pop("placeholder", None)
+    return response
+  except Exception as exc:
+    return {
+      "ok": False,
+      "error": str(exc),
+      "tool": tool,
+      "items": [],
+      "total": 0,
+      "limit": params.limit,
+    }

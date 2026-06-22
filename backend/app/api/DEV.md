@@ -11,20 +11,53 @@
 | 日志查询接口 | `app/api/v1/logs.py` | 日志查询入口 |
 | 智能诊断接口 | `app/api/v1/diagnosis.py` | 诊断入口 |
 | 系统状态接口 | `app/api/v1/system.py` | 运行状态查询与全链路验证入口 |
-| 分析报告接口 | `app/api/v1/reports.py` | **占位** 最近报告与报告详情 |
-| 预警接口 | `app/api/v1/alerts.py` | **占位** 活跃预警与确认 |
+| 分析报告接口 | `app/api/v1/reports.py` | 最近报告与报告详情（M4 真实调 `report_service`） |
+| 预警接口 | `app/api/v1/alerts.py` | 活跃预警与确认（M5 真实调 `alert_service`） |
+| 分析轨迹接口 | `app/api/v1/analysis.py` | 近期图执行轨迹与手动触发主图（M6 真实调 `graph_main` / `report_service`） |
 
 ## 3. 模块职责边界
 - 应该放在这里：请求接收、基础校验、调用 service、统一响应返回。
 - 不应该放在这里：Kafka/ES 直连代码、复杂业务规则、诊断核心算法。
 
 ## 4. 已实现功能清单
-- 已提供 health/logs/diagnosis/system 四类 v1 接口文件。
+- 已提供 health/logs/diagnosis/system/reports/alerts 六类 v1 接口文件。
 - 已具备路由聚合入口文件。
 - `POST /api/v1/system/pipeline/verify` 已接入后端全链路验证服务，返回节点状态与终端输出。
-- `GET /api/v1/reports/recent`、`GET /api/v1/reports/{id}` **占位** 已挂载。
-- `GET /api/v1/alerts/active`、`POST /api/v1/alerts/{id}/ack` **占位** 已挂载。
-- `GET /api/v1/logs/fields` **占位** 字段目录接口已挂载。
+- `GET /api/v1/logs/fields`：按 `log_type` 返回字段目录或全量列表（M1，调 `field_catalog`）。
+- `POST /api/v1/logs/aggregate`：受控聚合入口（M1，调 `aggregation_service`）。
+- `GET /api/v1/reports/recent`、`GET /api/v1/reports/{id}`：真实调 `report_service`（M4-05）。
+- `GET /api/v1/alerts/active`、`POST /api/v1/alerts/{id}/ack`：真实调 `alert_service`（M5-05）。
+- `GET /api/v1/analysis/runs/recent`、`POST /api/v1/analysis/run`：真实调 `report_service` / `graph_main`（M6-05）；见下文「分析轨迹 API」。
+
+## 4.1 分析轨迹 API 与 node_trace 展示用途（M6）
+
+路由前缀：`/api/v1/analysis`（`router.py` 已注册 `tags=["analysis"]`）。
+
+### `GET /api/v1/analysis/runs/recent`
+
+- **职责**：返回近期分析报告列表，并附带每条报告的 **node_trace 摘要**，供前端「分析执行轨迹」面板展示。
+- **实现**：先 `list_recent_reports(limit)`，再对每条 `report_id` 调 `get_report` 补全 `node_trace`（列表项本身不含完整轨迹）。
+- **响应字段**（`AnalysisRunsRecentResponse`）：
+  - `items[]`：`report_id`、`report_type`、`title`、`created_at`、`trigger_type`
+  - `items[].node_trace[]`：摘要字段 `node_name`、`status`、`duration_ms`、`output_summary`
+  - `items[].node_count`、`items[].total_duration_ms`：便于前端渲染节点数与总耗时
+
+### `POST /api/v1/analysis/run`
+
+- **职责**：手动触发主图 `run_main_graph`，用于调试、答辩演示或前端「立即分析」按钮。
+- **请求体**（`AnalysisRunRequest`）：`trigger_type`（`scheduled` | `rule`）、可选 `trigger_event`、`time_window`。
+- **响应字段**（`AnalysisRunResponse`）：`ok`、`report_id`、`alert_id`、**完整 `node_trace`**、`alert_decision`、`errors`。
+
+### node_trace 前端展示用途
+
+| 场景 | 数据来源 | 前端可展示内容 |
+|---|---|---|
+| 历史轨迹列表 | `GET /runs/recent` | 按报告折叠展示节点流水线：节点名、成功/失败状态、单节点耗时、产出摘要 |
+| 手动触发即时反馈 | `POST /run` | 完整轨迹时间线；结合 `alert_decision` 展示是否出预警、是否去重命中 |
+| 报告详情深挖 | `GET /reports/{id}` | 报告正文 + 持久化时写入的完整 `node_trace`（含子图节点，主图前缀 `scheduled.` / `rule.`） |
+
+- 子图节点在 `merge_result` 阶段合并入主图轨迹，前端可用 `node_name` 前缀区分主图节点与子图节点。
+- `output_summary` 为短文本，适合列表卡片；详情页可展开 `error_message`（若存在）。
 
 ## 5. 待开发功能清单（P0-P3）
 - P0：补齐接口错误码与异常返回结构一致性。
@@ -35,7 +68,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| API | 框架占位已扩展 | 2026-06-16 | elk-backend-agent | 中 | reports/alerts/logs/fields 占位 API 已挂载 |
+| API | M1/M4/M5/M6 核心接口已真实对接 | 2026-06-22 | elk-backend-agent (M6-07) | 低 | logs/reports/alerts/analysis 均已去占位 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -57,7 +90,13 @@
 | 2026-05-14 | 恢复被基础版本覆盖的系统状态接口 | `app/api/v1/system.py` | `/status` 重新返回 `kafka`、`elasticsearch`、`docker`、`containers`、`services`，并恢复 `/containers` | 需重启当前 8000 后端进程后浏览器才能命中新代码 |
 | 2026-05-18 | 新增全链路验证 API | `app/api/v1/system.py` | `POST /system/pipeline/verify` 调用 service 执行 `verify_log_pipeline_full` 并返回结构化节点状态 | 验证耗时取决于 Kafka/Logstash/ES 当前状态 |
 | 2026-05-19 | 全链路验证 API 支持多线程参数 | `app/api/v1/system.py` | `PipelineVerifyRequest.workers` 透传到验证 service，覆盖多线程生产验证 | workers 当前由 schema 限制在 1~8 |
-| 2026-06-16 | 新增 reports/alerts 占位路由与 logs/fields | `reports.py`、`alerts.py`、`logs.py`、`router.py` | 路由可 import；返回 `placeholder: true` | 待 M4/M5 service 实现后对接真实数据 |
+| 2026-06-16 | 新增 reports/alerts 占位路由与 logs/fields | `reports.py`、`alerts.py`、`logs.py`、`router.py` | 路由可 import；初期返回 `placeholder: true` | 已由 M4/M5 对接真实 service |
+| 2026-06-16 | M1-06：`GET /fields` 与 `POST /aggregate` 真实实现 | `app/api/v1/logs.py` | 转发 field_catalog / aggregation_service；无 placeholder | — |
+| 2026-06-22 | M4-05：reports API 去占位 | `app/api/v1/reports.py` | `/recent` 与 `/{id}` 真实调 report_service | — |
+| 2026-06-22 | M5-05：alerts API 去占位 | `app/api/v1/alerts.py` | `/active` 与 `/{id}/ack` 真实调 alert_service | — |
+| 2026-06-22 | 同步 API DEV 文档至 M5 现状 | `app/api/DEV.md` | 模块总览、已实现清单、状态表与 M1/M4/M5 开发日志对齐 | P0 统一错误码仍待办 |
+| 2026-06-22 | M6-05：analysis 轨迹 API | `app/api/v1/analysis.py`、`router.py` | `/runs/recent` 摘要轨迹；`/run` 手动触发主图 | list 项经 get_report 补全 node_trace |
+| 2026-06-22 | **M6-07：API DEV 文档收敛** | `app/api/DEV.md` | 分析轨迹 API 与 node_trace 前端展示用途已记录 | P0 统一错误码仍待办 |
 
 ## 2026-05-13 补充：开发者容器状态 API
 

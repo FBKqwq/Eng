@@ -12,24 +12,25 @@
 
 ---
 
-## 0. 当前现状基线（规划起点）
+## 0. 当前现状基线（截至 2026-06-22，M5 收口后）
 
+> 本节为滚动现状快照；详细验收见各模块 `DEV.md` 与 `job/task_m*/STATUS.md`。§1 及以下章节仍为分阶段规划参考，落地以模块 DEV.md 为准。
 
-| 模块                                                       | 当前状态                                                                                                | 风险  |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --- |
-| `services/simulation/`                                   | 已可生成 7 大类结构化日志（application/behavior/web_server/performance/security/infrastructure 已实现，audit 契约已定义） | 低   |
-| `services/kafka/`                                        | Producer、topic 预建、broker 探测可用                                                                       | 低   |
-| `services/elasticsearch/`                                | client、search_logs、cluster health 已接通真实 ES；**聚合查询未实现**                                              | 中   |
-| `services/diagnosis/`                                    | 规则分流为硬编码关键词；analyzer 已接 ES 上下文；**LLM/图未接入**                                                         | 高   |
-| `services/docker_status.py` / `pipeline_verification.py` | 只读探测与全链路验证可用                                                                                        | 低   |
-| `schemas/log.py`                                         | 7 大类日志契约 + 查询/聚合/上下文请求响应结构已完整定义                                                                     | 低   |
-| LangChain 层                                              | 不存在                                                                                                 | 高   |
-| LangGraph 层                                              | 不存在                                                                                                 | 高   |
-| MCP/工具层                                                  | 不存在                                                                                                 | 高   |
-| 报告/预警持久化                                                 | 不存在（`analysis-results-`*、`alerts-*` 未建）                                                             | 高   |
+| 模块 | 当前状态 | 风险 |
+| --- | --- | --- |
+| `services/simulation/` | 7 大类结构化日志可生成（audit 契约已定义） | 低 |
+| `services/kafka/` | Producer、topic 预建、broker 探测可用 | 低 |
+| `services/elasticsearch/` | client、search、聚合、上下文、字段目录、索引模板、cluster health（**M1 已完成**） | 低 |
+| `services/diagnosis/` | 声明式规则 10 条 + `match_log` + 同步诊断门面（**M5**）；频率规则聚合待 P1 | 中 |
+| `services/docker_status.py` / `pipeline_verification.py` | 只读探测与全链路验证可用 | 低 |
+| `services/langchain/` | report/diagnosis Chain + 降级（**M3**）；`relation_chain`/`alert_chain` 占位 | 低 |
+| `services/analysis/` | 定时子图 + 规则子图 + scheduler + trigger_scanner（**M4/M5**）；`graph_main` 占位（M6） | 中 |
+| `services/tools/` | 10 StructuredTool + registry（**M2**）；`create_mcp_server` 占位（M7） | 低 |
+| `services/report/` / `services/alert/` | `analysis-results-*` / `alerts-*` 真实读写（**M4/M5**） | 中 |
+| `schemas/log.py` | 7 大类日志 + 查询/聚合/上下文契约 | 低 |
+| API 层 | health/system/logs/diagnosis/reports/alerts 均已对接 service | 低 |
 
-
-结论：数据底座（生成 → Kafka → Logstash → ES）已基本打通，下一阶段的主战场是 **ES 聚合层、智能分析编排层、工具封装层** 三块。
+**结论**：数据底座与智能分析主链路（M1～M5）已成型；下一阶段主战场为 **M6 主图收敛**、**M7 关系发现 + MCP Server**、以及频率规则聚合与前端 `node_trace` 对接。
 
 ---
 

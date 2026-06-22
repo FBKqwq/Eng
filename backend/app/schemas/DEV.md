@@ -8,8 +8,8 @@
 |---|---|
 | `app/schemas/log.py` | 日志查询相关请求与响应结构 |
 | `app/schemas/diagnosis.py` | 诊断请求与诊断结果结构 |
-| `app/schemas/report.py` | **占位** 分析报告列表与详情契约 |
-| `app/schemas/alert.py` | **占位** 预警列表与确认契约 |
+| `app/schemas/report.py` | 分析报告列表与详情契约（API 已对接 `report_service`） |
+| `app/schemas/alert.py` | 预警列表与确认契约（API 已对接 `alert_service`） |
 
 ## 3. 模块职责边界
 - 应该放在这里：Pydantic 模型、字段约束、接口契约定义。
@@ -21,6 +21,7 @@
 - `DiagnosisRequest` 已补充 `keyword` 字段，兼容诊断页自由输入与规则分流。
 - `PipelineVerifyRequest/Response` 已定义，用于系统状态页展示多线程全链路验证节点与终端输出。
 - `WebServerLog` 已按 Nginx access/error log 常见字段补齐，纳入 `LogType.web_server` 与 `AnyLog`。
+- `schemas/report.py`、`schemas/alert.py`：列表/详情/确认响应模型已建立，并由 M4/M5 API 真实消费。
 
 ## 5. 待开发功能清单（P0-P3）
 - P0：统一通用响应结构与错误结构。
@@ -31,7 +32,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Schemas | 框架占位已扩展 | 2026-06-16 | elk-backend-agent | 中 | report/alert 占位契约已建立 |
+| Schemas | M1/M4/M5 契约已对齐 API | 2026-06-22 | elk-backend-agent | 低 | report/alert 已由占位转为真实对接 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -52,7 +53,8 @@
 | 2026-05-18 | 新增全链路验证响应契约 | `app/schemas/system.py` | 系统状态页可读取 `success`、`nodes`、`stdout/stderr` 展示验证结果 | 后续可抽出统一任务执行响应基类 |
 | 2026-05-19 | 全链路验证请求支持 workers | `app/schemas/system.py` | `PipelineVerifyRequest.workers` 可控制验证脚本并发生成与发送线程数 | 当前限制 1~8 个 worker |
 | 2026-05-19 | 补齐 Nginx Web Server 日志契约 | `app/schemas/log.py` | 新增 `LogType.web_server`、`WebServerLog`、Nginx log kind / upstream cache / scheme 等枚举，Pydantic 实例化验证通过 | 后续需在 simulation 生成器中实际产出该类日志 |
-| 2026-06-16 | 新增 report/alert 占位 schema | `schemas/report.py`、`schemas/alert.py` | 列表/详情/确认响应模型就位 | 待 M4/M5 填充真实字段 |
+| 2026-06-16 | 新增 report/alert schema | `schemas/report.py`、`schemas/alert.py` | 列表/详情/确认响应模型就位 | 已由 M4/M5 API 对接 |
+| 2026-06-22 | 同步 Schemas DEV 至 M5 现状 | `app/schemas/DEV.md` | report/alert 去占位标注；状态表更新 | P0 统一响应基类仍待办 |
 
 ## 2026-05-13 补充：System / Docker 状态响应 Schema
 

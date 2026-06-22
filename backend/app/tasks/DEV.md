@@ -11,7 +11,9 @@
 | `app/tasks/run_log_producer.py` | 循环生成模拟日志并通过 Kafka producer 发送 |
 | `app/tasks/verify_log_kafka_pipeline.py` | 一次性验证：日志生成 → producer → topic → 内置 consumer 消费并比对 log_id |
 | `app/tasks/verify_log_pipeline_full.py` | 全链路验证：生成 → Kafka → 脚本消费 Kafka → Logstash → ES 检索（含 @timestamp/tags） |
-| `app/tasks/init_indices.py` | **M1 新增**：调用 `index_service.init_all_indices` / `verify_templates` 初始化或校验 ES 索引模板 |
+| `app/tasks/init_indices.py` | 调用 `index_service.init_all_indices` / `verify_templates` 初始化或校验 ES 索引模板 |
+| `app/tasks/run_scheduler.py` | **M4**：定时分析调度入口（`--once` 或常驻，仅调 `scheduler`） |
+| `app/tasks/run_trigger_scanner.py` | **M5**：规则扫描触发入口（`--once` 或常驻，仅调 `trigger_scanner`） |
 | `app/tasks/run_mcp_server.py` | **占位** 独立运行 MCP Server（M7） |
 
 ## 3. 模块职责边界
@@ -70,6 +72,26 @@ python -m app.tasks.init_indices --json
 python -m app.tasks.init_indices --verify-only --json
 ```
 
+### run_scheduler.py（M4-07）
+
+```bash
+# 单次执行定时分析闭环（子图 → write_report）
+python -m app.tasks.run_scheduler --once
+
+# 常驻模式（按 settings.analysis_schedule_minutes 周期调度）
+python -m app.tasks.run_scheduler
+```
+
+### run_trigger_scanner.py（M5-08）
+
+```bash
+# 单次规则扫描闭环（扫描 → 子图 → 写报告 + 去重写预警）
+python -m app.tasks.run_trigger_scanner --once
+
+# 常驻模式（按 settings.trigger_scan_seconds 轮询）
+python -m app.tasks.run_trigger_scanner
+```
+
 ## 5. 待开发功能清单（P0-P3）
 
 - P1：支持从环境变量或配置文件读取发送 TPS 上限。
@@ -88,6 +110,8 @@ python -m app.tasks.init_indices --verify-only --json
 | verify_log_kafka_pipeline | 稳定可用 | 2026-05-14 | codex | 低 | 依赖本机 Kafka |
 | verify_log_pipeline_full | 稳定可用 | 2026-05-19 | codex | 低 | 需 Kafka + Logstash + ES |
 | init_indices | M1 已完成 | 2026-06-16 | elk-backend-agent (M1-03) | 低 | 真实调用 index_service；需 ES 管理权限 |
+| run_scheduler | M4 已完成 | 2026-06-22 | elk-backend-agent (M4-07) | 低 | `--once` 或常驻；APScheduler max_instances=1 |
+| run_trigger_scanner | M5 已完成 | 2026-06-22 | elk-backend-agent (M5-08) | 低 | `--once` 或常驻；仅 import trigger_scanner |
 | run_mcp_server | 占位 | 2026-06-16 | elk-backend-agent | 高 | 待 M7 接入 FastMCP |
 
 ## 7. 禁止重复实现清单
@@ -118,4 +142,6 @@ python -m app.tasks.init_indices --verify-only --json
 | 2026-05-19 | 多线程生产支持 | `run_log_producer.py`、`verify_log_pipeline_full.py` | `--workers` 验证通过 | 可补 TPS 统计 |
 | 2026-06-16 | 新增 MCP Server 占位任务 | `run_mcp_server.py` | 打印占位提示后退出 | 待 M7 |
 | 2026-06-16 | **M1-03**：新增 `init_indices.py` CLI | `init_indices.py`、`DEV.md` | 支持 `python -m app.tasks.init_indices` 及 `--verify-only` / `--json` | ES 无管理权限时结构化失败 |
-| 2026-06-16 | **Logstash 拆索引写入**：Kafka 日志按 `log_type` 路由至 `app-logs-{log_type}-YYYY.MM.dd` | `location/logstash/pipeline/logstash.conf`、本 DEV.md | 与 `index_service` / `field_catalog` 索引命名一致（`web_server` 保留下划线）；验收 30 条日志写入 5 个拆分索引 | `verify_log_pipeline_full` 仍默认查 `app-logs-*` 通配 |
+| 2026-06-22 | **M4-07**：新增 `run_scheduler.py` | `run_scheduler.py` | 定时分析任务入口；`--once` 与常驻模式 | 依赖 ES 与 LLM 可选降级 |
+| 2026-06-22 | **M5-08**：新增 `run_trigger_scanner.py` | `run_trigger_scanner.py` | 规则扫描任务入口；`--once` 与常驻模式 | 频率规则聚合待 diagnosis P1 |
+| 2026-06-22 | 同步 Tasks DEV 至 M5 现状 | `app/tasks/DEV.md` | 总览、状态表、调度/扫描入口文档化 | — |
