@@ -5,6 +5,7 @@ starlette>=0.40,<0.48
 uvicorn[standard]==0.35.0
 pydantic==2.11.7
 pydantic-settings==2.10.1
+PyYAML==6.0.2
 kafka-python==2.2.15
 elasticsearch==9.1.0
 python-dotenv==1.1.1

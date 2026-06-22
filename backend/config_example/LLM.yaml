@@ -1,0 +1,30 @@
+# 大模型调用统一配置（示例）
+#
+# 用途：展示 config/LLM.yaml 的结构与字段示例。
+#       实际配置请复制本文件到 backend/config/LLM.yaml 并填入真实值。
+#       config/ 已加入 .gitignore，真实密钥不会进入版本库。
+#
+# 优先级（从高到低）：
+#   1. 进程环境变量（非空）：LLM_API_KEY / LLM_BASE_URL / LLM_DEFAULT_MODEL / ...
+#   2. config/LLM.yaml
+#   3. 代码内置默认值
+#
+# 安全说明：api_key 为敏感信息。生产环境建议改用环境变量 LLM_API_KEY 注入。
+
+llm:
+  # 供应商协议：兼容 OpenAI 协议（如 DashScope compatible-mode）
+  provider: "openai"
+
+  # API 凭证与网关（请替换为真实值）
+  api_key: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  api_base: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+
+  # 默认模型：用于 report / alert 等通用任务
+  model_name: "qwen3-plus"
+
+  # 分析类任务（diagnosis / relation）模型；留空则回退 model_name
+  analysis_model: "qwen3-plus"
+
+  # 调用参数
+  timeout_seconds: 30
+  temperature: 0.2

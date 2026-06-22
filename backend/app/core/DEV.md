@@ -6,7 +6,8 @@
 ## 2. 项目模块总览
 | 文件 | 主要职责 |
 |---|---|
-| `app/core/config.py` | Pydantic Settings：应用名、端口、Kafka、ES、日志生产间隔等 |
+| `app/core/config.py` | Pydantic Settings：应用名、端口、Kafka、ES、日志生产间隔等；并加载 `config/LLM.yaml` 作为 LLM 调用统一配置 |
+| `config/LLM.yaml`（backend 根目录） | 大模型调用统一配置：provider/api_key/api_base/model_name/analysis_model/timeout/temperature |
 
 ## 3. 模块职责边界
 - 应该放在这里：全局配置、常量、日志/安全等横切基础（若后续增加）。
@@ -45,6 +46,7 @@
 | 2026-05-14 | 恢复被基础版本覆盖的 Docker 监控配置项 | `app/core/config.py` | `docker_project_name`、`docker_monitored_services` 重新可供系统状态接口读取 | 需重启后端进程后生效 |
 | 2026-05-14 | 增加 Elasticsearch 用户名/密码配置项 | `app/core/config.py` | 与 `get_es_client` 的 `basic_auth` 对齐，兼容 `ELASTIC_PASSWORD` | 密钥不入库、不写入代码 |
 | 2026-06-16 | 新增 LLM/分析调度占位配置 | `app/core/config.py`、`.env.example` | 对齐总体规划 §2.7 环境变量约定 | 待 M3 配置真实 API Key |
+| 2026-06-22 | 新增 LLM 调用统一配置文件 | `config/LLM.yaml`、`app/core/config.py`、`.env.example`、`requirements.txt` | `config/LLM.yaml` 成为 LLM 配置统一来源（qwen3-plus / DashScope compatible-mode），非空 `LLM_*` 环境变量优先；新增 PyYAML 依赖；M3 测试 22 passed | api_key 已写入 YAML，生产建议改用环境变量注入 |
 
 ## 2026-05-13 补充：Docker 监控配置
 
