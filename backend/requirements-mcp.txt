@@ -1,0 +1,13 @@
+# MCP Server 形态（M7 第二阶段）可选依赖
+#
+# 用途：演示 create_mcp_server() / run_mcp_server，把工具层以 MCP 协议暴露给外部 Agent。
+#
+# 重要：fastmcp 依赖 starlette>=1.x，与核心服务的 fastapi==0.116.1（要求 starlette<0.48）冲突。
+# 因此请勿与核心 requirements.txt 装进同一环境，建议为 MCP 演示单建虚拟环境：
+#   python -m venv .venv-mcp
+#   .venv-mcp\Scripts\pip install -r requirements-mcp.txt
+#   .venv-mcp\Scripts\python -m app.tasks.run_mcp_server
+#
+# 核心环境不安装 fastmcp 时，registry.create_mcp_server() 会结构化降级，不影响其余功能与测试。
+
+fastmcp

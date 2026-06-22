@@ -67,9 +67,12 @@
 >
 > 收口复验时修复了 M7 改动引入的 4 个陈旧单元断言（见变更日志 2026-06-22 收口复验行）。
 >
-> **遗留（非里程碑代码问题，另行处理）**：
-> 1. `test_m1_aggregation_service.py` 集成用例需本地 ES 且有种子数据（`@pytest.mark.integration`，默认 deselect）。
-> 2. 运行环境 FastAPI/Starlette 版本过新，`APIRouter(on_startup=...)` 被移除导致 `test_health.py` 等 API 层用例收集失败——属依赖版本问题，需固定 fastapi/starlette 版本或适配 lifespan 写法。
+> **依赖冲突已修复（2026-06-22）**：`fastmcp 3.4.2` 曾把 `starlette` 拉至 `1.3.1`，与 `fastapi==0.116.1`（要求 `starlette<0.48`）冲突，导致 `app.main` 启动与 `test_health.py` 收集失败。
+> 处置：`requirements.txt` 固定 `starlette>=0.40,<0.48`，把 `fastmcp` 移出核心依赖到独立 `requirements-mcp.txt`（fastmcp 与核心 fastapi 不可共存于同一环境）；核心环境卸载 fastmcp/sse-starlette、回装 `starlette==0.47.3`。
+> **全量测试**（含 API 层）：`pytest -m "not integration"` → 144 passed, 1 skipped, 2 deselected。
+>
+> **遗留（非里程碑代码问题）**：`test_m1_aggregation_service.py` 集成用例需本地 ES 且有种子数据（`@pytest.mark.integration`，默认 deselect）。
+> MCP Server 演示需另建虚拟环境装 `requirements-mcp.txt`（见该文件头部说明）。
 
 ---
 

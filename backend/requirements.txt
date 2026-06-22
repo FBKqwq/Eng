@@ -1,4 +1,7 @@
 fastapi==0.116.1
+# 固定 starlette 到 fastapi 0.116.1 兼容区间（>=0.40,<0.48）。
+# 注意：fastmcp 会要求 starlette>=1.x，与此冲突，故 fastmcp 不进核心依赖（见 requirements-mcp.txt）。
+starlette>=0.40,<0.48
 uvicorn[standard]==0.35.0
 pydantic==2.11.7
 pydantic-settings==2.10.1
@@ -9,5 +12,6 @@ langchain-core>=0.3,<0.4
 langchain-openai>=0.2,<0.4
 langgraph>=0.2,<0.3
 apscheduler>=3.10,<4
-# MCP Server 形态（M7 第二阶段）；registry 内懒加载 fastmcp，缺失不影响核心链路与测试
-fastmcp
+# MCP Server 形态（M7 第二阶段）见 requirements-mcp.txt。
+# fastmcp 依赖 starlette>=1.x，与核心 fastapi 0.116.1 冲突，故不进核心依赖；
+# registry 内懒加载 fastmcp，缺失不影响核心链路与测试。
