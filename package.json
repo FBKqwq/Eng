@@ -1,0 +1,21 @@
+{
+  "name": "app123",
+  "version": "1.0.0",
+  "description": "本项目是一个面向课程设计/工程实践的电商日志分析平台，使用 Kafka、Logstash、Elasticsearch、Kibana 构建日志链路，使用 FastAPI 提供后端 API，使用 Vue 3 + Vite 提供前端页面，并预留规则诊断与 LangGraph 智能诊断扩展能力。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FBKqwq/Eng.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/FBKqwq/Eng/issues"
+  },
+  "homepage": "https://github.com/FBKqwq/Eng#readme"
+}
