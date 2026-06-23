@@ -1,75 +1,36 @@
 <template>
   <div class="dynamic-filter-bar">
-    <p v-if="isFallback" class="fallback-tag">字段目录兜底</p>
+    <div v-if="isFallback" class="fallback-banner" role="status">
+      <strong>字段目录兜底</strong>
+      <span>未能加载后端字段目录，已使用本地契约筛选项；仅展示后端支持的精确筛选字段。</span>
+    </div>
 
     <div v-if="loading" class="filter-skeleton" aria-busy="true" aria-label="加载筛选字段">
       <div v-for="n in 4" :key="n" class="skeleton-field" />
     </div>
 
     <template v-else>
-      <div class="filter-grid">
-        <div
-          v-for="field in visibleFields"
-          :key="field.key"
-          class="filter-field"
+      <div class="filter-toolbar">
+        <span class="filter-toolbar__title">筛选</span>
+        <button
+          v-if="advancedFields.length"
+          type="button"
+          class="filter-toolbar__toggle"
+          @click="showAdvanced = !showAdvanced"
         >
-          <label class="filter-label" :for="inputId(field)">{{ field.label }}</label>
+          {{ showAdvanced ? '收起高级筛选' : '展开高级筛选' }}
+          <span v-if="advancedActiveCount" class="filter-toolbar__badge">{{ advancedActiveCount }}</span>
+        </button>
+      </div>
 
-          <!-- 枚举 terms：下拉 -->
-          <select
-            v-if="field.type === 'terms' && field.options?.length"
-            :id="inputId(field)"
-            class="filter-control"
-            :multiple="field.multiple"
-            :value="selectValue(field)"
-            @change="onSelectChange(field, $event)"
-          >
-            <option v-if="!field.multiple" value="">全部</option>
-            <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
-          </select>
-
-          <!-- 自由 terms：逗号分隔 -->
-          <input
-            v-else-if="field.type === 'terms'"
-            :id="inputId(field)"
-            class="filter-control"
-            type="text"
-            :value="termsText(field)"
-            placeholder="多个值用逗号分隔"
-            @input="onTermsInput(field, $event)"
-          />
-
-          <!-- 数值范围 -->
-          <div v-else-if="field.type === 'range'" class="range-row">
-            <input
-              :id="inputId(field)"
-              class="filter-control range-input"
-              type="number"
-              :value="rangePart(field, 'gte')"
-              placeholder="最小"
-              @input="onRangeInput(field, 'gte', $event)"
-            />
-            <span class="range-sep">—</span>
-            <input
-              class="filter-control range-input"
-              type="number"
-              :value="rangePart(field, 'lte')"
-              placeholder="最大"
-              @input="onRangeInput(field, 'lte', $event)"
-            />
-          </div>
-
-          <!-- 关键字 / 单值 -->
-          <input
-            v-else
-            :id="inputId(field)"
-            class="filter-control"
-            type="text"
-            :value="scalarValue(field)"
-            :placeholder="field.placeholder || '输入筛选值'"
-            @input="onKeywordFieldInput(field, $event)"
-          />
-        </div>
+      <div class="filter-grid filter-grid--common">
+        <FilterFieldControl
+          v-for="field in commonFields"
+          :key="field.key"
+          :field="field"
+          :model-value="modelValue"
+          @patch="patchModel"
+        />
 
         <div class="filter-field filter-field--keyword">
           <label class="filter-label" for="filter-keyword">关键字</label>
@@ -78,23 +39,38 @@
             class="filter-control"
             type="search"
             :value="keyword"
-            placeholder="搜索 message、服务名等"
+            placeholder="模糊搜索 message、request_path、trace_id 等"
             @input="onKeywordChange"
           />
+          <p class="filter-hint">不支持精确筛选的字段（如 action、URI、IP）请在此搜索</p>
         </div>
       </div>
 
+      <div v-show="showAdvanced && advancedFields.length" class="filter-grid filter-grid--advanced">
+        <FilterFieldControl
+          v-for="field in advancedFields"
+          :key="field.key"
+          :field="field"
+          :model-value="modelValue"
+          @patch="patchModel"
+        />
+      </div>
+
       <div class="filter-actions">
-        <button type="button" class="btn-reset" @click="resetFilters">重置筛选</button>
+        <button type="button" class="btn-reset" @click="resetFilters">重置全部</button>
       </div>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, defineComponent, h } from 'vue'
 import { getLogFields } from '../../api/logs.js'
 import { getLogTypeMeta } from '../../utils/logTypeMeta.js'
+import {
+  buildFilterDescriptorsFromCatalog,
+  buildFilterDescriptorsFromFallback
+} from '../../utils/logQueryContract.js'
 
 const props = defineProps({
   logType: { type: String, required: true },
@@ -102,172 +78,122 @@ const props = defineProps({
   keyword: { type: String, default: '' }
 })
 
-const emit = defineEmits(['update:modelValue', 'update:keyword'])
+const emit = defineEmits(['update:modelValue', 'update:keyword', 'catalog-fallback'])
 
 const loading = ref(true)
 const isFallback = ref(false)
-const visibleFields = ref([])
+const showAdvanced = ref(false)
+const commonFields = ref([])
+const advancedFields = ref([])
 
-const MAX_VISIBLE = 8
+const advancedActiveCount = computed(() =>
+  advancedFields.value.filter((field) => hasValue(props.modelValue[field.key])).length
+)
 
-const EXCLUDED_FIELDS = new Set([
-  'timestamp',
-  'log_type',
-  'log_id',
-  'message',
-  'span_id',
-  'source_type',
-  'service_instance',
-  'user_agent'
-])
-
-const DISPLAY_PRIORITY = [
-  'service_name',
-  'log_level',
-  'event_type',
-  'error_code',
-  'status_code',
-  'trace_id',
-  'user_id',
-  'session_id',
-  'env',
-  'host',
-  'action',
-  'page',
-  'product_id',
-  'http_method',
-  'request_path',
-  'client_ip',
-  'status',
-  'risk_level',
-  'component',
-  'resource_type'
-]
-
-const FIELD_LABELS = {
-  service_name: '服务',
-  log_level: '日志级别',
-  event_type: '事件类型',
-  error_code: '错误码',
-  status_code: '状态码',
-  trace_id: '链路 ID',
-  request_id: '请求 ID',
-  user_id: '用户 ID',
-  session_id: '会话 ID',
-  order_id: '订单 ID',
-  env: '环境',
-  host: '主机',
-  action: '行为',
-  page: '页面',
-  product_id: '商品 ID',
-  product_name: '商品名称',
-  http_method: 'HTTP 方法',
-  request_path: '请求路径',
-  client_ip: '客户端 IP',
-  status: '状态',
-  tags: '标签',
-  risk_level: '风险等级',
-  component: '组件',
-  resource_type: '资源类型',
-  keyword: '关键字',
-  operator: '操作人',
-  operation: '操作',
-  target: '对象'
+function hasValue(val) {
+  return !(
+    val == null ||
+    val === '' ||
+    (Array.isArray(val) && val.length === 0) ||
+    (typeof val === 'object' && !Array.isArray(val) && !Object.keys(val).length)
+  )
 }
 
-const TERM_OPTIONS = {
-  log_level: ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-  env: ['dev', 'test', 'staging', 'prod']
-}
+const FilterFieldControl = defineComponent({
+  name: 'FilterFieldControl',
+  props: {
+    field: { type: Object, required: true },
+    modelValue: { type: Object, default: () => ({}) }
+  },
+  emits: ['patch'],
+  setup(fieldProps, { emit: fieldEmit }) {
+    return () => {
+      const field = fieldProps.field
+      const id = `filter-${field.key}`
+      const val = fieldProps.modelValue[field.key]
 
-/** catalog 字段名 → LogQueryRequest 键与控件类型 */
-const QUERY_FIELD_MAP = {
-  service_name: { key: 'service_names', type: 'terms' },
-  log_level: { key: 'log_levels', type: 'terms', options: TERM_OPTIONS.log_level },
-  event_type: { key: 'event_types', type: 'terms' },
-  error_code: { key: 'error_codes', type: 'terms' },
-  status_code: { key: 'status_codes', type: 'range' },
-  trace_id: { key: 'trace_id', type: 'keyword' },
-  request_id: { key: 'request_id', type: 'keyword' },
-  user_id: { key: 'user_id', type: 'keyword' },
-  session_id: { key: 'session_id', type: 'keyword' },
-  order_id: { key: 'order_id', type: 'keyword' },
-  env: { key: 'envs', type: 'terms', options: TERM_OPTIONS.env },
-  status: { key: 'statuses', type: 'terms' },
-  tags: { key: 'tags', type: 'terms' }
-}
+      if (field.type === 'terms' && field.options?.length) {
+        return h('div', { class: 'filter-field' }, [
+          h('label', { class: 'filter-label', for: id }, field.label),
+          h(
+            'select',
+            {
+              id,
+              class: 'filter-control',
+              multiple: field.multiple,
+              value: selectValue(field, val),
+              onChange: (e) => onSelectChange(field, e, fieldEmit)
+            },
+            [
+              !field.multiple ? h('option', { value: '' }, '全部') : null,
+              ...field.options.map((opt) => h('option', { key: opt, value: opt }, opt))
+            ]
+          )
+        ])
+      }
 
-function inputId(field) {
-  return `filter-${field.key}`
-}
+      if (field.type === 'terms') {
+        const text = !val ? '' : Array.isArray(val) ? val.join(', ') : String(val)
+        return h('div', { class: 'filter-field' }, [
+          h('label', { class: 'filter-label', for: id }, field.label),
+          h('input', {
+            id,
+            class: 'filter-control',
+            type: 'text',
+            value: text,
+            placeholder: field.numeric ? '如 400,500' : '多个值用逗号分隔',
+            onInput: (e) => onTermsInput(field, e, fieldEmit)
+          })
+        ])
+      }
 
-function labelFor(fieldName) {
-  return FIELD_LABELS[fieldName] || fieldName.replace(/_/g, ' ')
-}
-
-function inferType(fieldName, termsSet, metricSet) {
-  const mapped = QUERY_FIELD_MAP[fieldName]
-  if (mapped?.type) return mapped.type
-  if (metricSet.has(fieldName)) return 'range'
-  if (termsSet.has(fieldName)) return 'terms'
-  return 'keyword'
-}
-
-function normalizeDescriptor(raw) {
-  const fieldName = raw.field || raw.name || raw.key
-  const mapped = QUERY_FIELD_MAP[fieldName]
-  const key = raw.key || mapped?.key || fieldName
-  const type = raw.type || mapped?.type || 'keyword'
-  const options = raw.options || mapped?.options || TERM_OPTIONS[fieldName]
-
-  return {
-    field: fieldName,
-    key,
-    label: raw.label || labelFor(fieldName),
-    type,
-    options: type === 'terms' ? options : undefined,
-    multiple: raw.multiple ?? (type === 'terms' && Boolean(options?.length)),
-    placeholder: raw.placeholder
-  }
-}
-
-function catalogToDescriptors(catalog) {
-  const filterFields = catalog?.filter_fields || []
-  const termsFields = catalog?.terms_fields || []
-  const metricFields = catalog?.metric_fields || []
-  const termsSet = new Set(termsFields)
-  const metricSet = new Set(metricFields)
-
-  const candidates = filterFields
-    .filter((name) => !EXCLUDED_FIELDS.has(name))
-    .sort((a, b) => {
-      const pa = DISPLAY_PRIORITY.indexOf(a)
-      const pb = DISPLAY_PRIORITY.indexOf(b)
-      return (pa === -1 ? 999 : pa) - (pb === -1 ? 999 : pb)
-    })
-    .slice(0, MAX_VISIBLE)
-
-  return candidates.map((fieldName) => {
-    const mapped = QUERY_FIELD_MAP[fieldName]
-    const type = inferType(fieldName, termsSet, metricSet)
-    const options = mapped?.options || TERM_OPTIONS[fieldName]
-
-    return {
-      field: fieldName,
-      key: mapped?.key || fieldName,
-      label: labelFor(fieldName),
-      type,
-      options: type === 'terms' ? options : undefined,
-      multiple: type === 'terms' && Boolean(options?.length)
+      return h('div', { class: 'filter-field' }, [
+        h('label', { class: 'filter-label', for: id }, field.label),
+        h('input', {
+          id,
+          class: 'filter-control',
+          type: 'text',
+          value: val == null ? '' : String(val),
+          placeholder: field.placeholder || '精确匹配',
+          onInput: (e) => fieldEmit('patch', { [field.key]: e.target.value })
+        })
+      ])
     }
-  })
+  }
+})
+
+function selectValue(field, val) {
+  if (!val) return field.multiple ? [] : ''
+  if (field.multiple) return Array.isArray(val) ? val : [val]
+  return Array.isArray(val) ? val[0] : val
 }
 
-function fallbackToDescriptors(logType) {
-  const meta = getLogTypeMeta(logType)
-  const list = meta?.fallbackFilters
-  if (!Array.isArray(list)) return []
-  return list.map(normalizeDescriptor)
+function onTermsInput(field, event, fieldEmit) {
+  const text = event.target.value.trim()
+  if (!text) {
+    fieldEmit('patch', { [field.key]: undefined })
+    return
+  }
+  const parts = text
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (field.numeric) {
+    const nums = parts.map((p) => Number(p)).filter((n) => Number.isFinite(n))
+    fieldEmit('patch', { [field.key]: nums.length ? nums : undefined })
+    return
+  }
+  fieldEmit('patch', { [field.key]: parts })
+}
+
+function onSelectChange(field, event, fieldEmit) {
+  const el = event.target
+  if (field.multiple) {
+    const selected = Array.from(el.selectedOptions).map((opt) => opt.value)
+    fieldEmit('patch', { [field.key]: selected.length ? selected : undefined })
+    return
+  }
+  fieldEmit('patch', { [field.key]: el.value ? [el.value] : undefined })
 }
 
 async function loadFields() {
@@ -277,99 +203,32 @@ async function loadFields() {
   try {
     const res = await getLogFields(props.logType)
     const catalog = res?.data?.catalog
-    if (!catalog?.filter_fields?.length) {
-      throw new Error('empty catalog')
-    }
-    visibleFields.value = catalogToDescriptors(catalog)
+    if (!catalog?.filter_fields?.length) throw new Error('empty catalog')
+    const groups = buildFilterDescriptorsFromCatalog(catalog)
+    commonFields.value = groups.common
+    advancedFields.value = groups.advanced
   } catch {
     isFallback.value = true
-    visibleFields.value = fallbackToDescriptors(props.logType)
+    const meta = getLogTypeMeta(props.logType)
+    const groups = buildFilterDescriptorsFromFallback(meta.fallbackFilters)
+    commonFields.value = groups.common
+    advancedFields.value = groups.advanced
   } finally {
     loading.value = false
+    emit('catalog-fallback', isFallback.value)
   }
 }
 
 function patchModel(patch) {
   const next = { ...props.modelValue }
   for (const [key, value] of Object.entries(patch)) {
-    if (
-      value === '' ||
-      value == null ||
-      (Array.isArray(value) && value.length === 0) ||
-      (typeof value === 'object' && !Array.isArray(value) && !Object.keys(value).length)
-    ) {
+    if (!hasValue(value)) {
       delete next[key]
     } else {
       next[key] = value
     }
   }
   emit('update:modelValue', next)
-}
-
-function scalarValue(field) {
-  const val = props.modelValue[field.key]
-  return val == null ? '' : String(val)
-}
-
-function termsText(field) {
-  const val = props.modelValue[field.key]
-  if (!val) return ''
-  return Array.isArray(val) ? val.join(', ') : String(val)
-}
-
-function rangePart(field, part) {
-  const val = props.modelValue[field.key]
-  if (!val || typeof val !== 'object') return ''
-  const num = val[part]
-  return num == null ? '' : num
-}
-
-function selectValue(field) {
-  const val = props.modelValue[field.key]
-  if (!val) return field.multiple ? [] : ''
-  if (field.multiple) return Array.isArray(val) ? val : [val]
-  return Array.isArray(val) ? val[0] : val
-}
-
-function onKeywordFieldInput(field, event) {
-  patchModel({ [field.key]: event.target.value })
-}
-
-function onTermsInput(field, event) {
-  const text = event.target.value.trim()
-  if (!text) {
-    patchModel({ [field.key]: undefined })
-    return
-  }
-  const parts = text
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  patchModel({ [field.key]: parts })
-}
-
-function onSelectChange(field, event) {
-  const el = event.target
-  if (field.multiple) {
-    const selected = Array.from(el.selectedOptions).map((opt) => opt.value)
-    patchModel({ [field.key]: selected })
-    return
-  }
-  const value = el.value
-  patchModel({ [field.key]: value ? [value] : undefined })
-}
-
-function onRangeInput(field, part, event) {
-  const raw = event.target.value
-  const current = { ...(props.modelValue[field.key] || {}) }
-  if (raw === '') {
-    delete current[part]
-  } else {
-    const num = Number(raw)
-    if (!Number.isFinite(num)) return
-    current[part] = num
-  }
-  patchModel({ [field.key]: Object.keys(current).length ? current : undefined })
 }
 
 function onKeywordChange(event) {
@@ -390,17 +249,66 @@ watch(() => props.logType, loadFields)
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 
-.fallback-tag {
-  display: inline-flex;
-  align-self: flex-start;
-  margin: 0;
-  padding: 2px 10px;
-  border-radius: 999px;
+.fallback-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
   background: var(--color-warning-bg);
   color: var(--color-warning);
   font-size: 12px;
+  line-height: 1.45;
+}
+
+.fallback-banner strong {
+  font-size: 13px;
+}
+
+.filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.filter-toolbar__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.filter-toolbar__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.filter-toolbar__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .filter-skeleton {
@@ -431,17 +339,15 @@ watch(() => props.logType, loadFields)
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .skeleton-field {
-    animation: none;
-    background: var(--color-bg);
-  }
-}
-
 .filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--spacing-sm);
+}
+
+.filter-grid--advanced {
+  padding-top: var(--spacing-sm);
+  border-top: 1px dashed var(--color-border);
 }
 
 .filter-field {
@@ -453,12 +359,6 @@ watch(() => props.logType, loadFields)
 
 .filter-field--keyword {
   grid-column: 1 / -1;
-}
-
-@media (min-width: 900px) {
-  .filter-field--keyword {
-    grid-column: span 2;
-  }
 }
 
 .filter-label {
@@ -475,8 +375,8 @@ watch(() => props.logType, loadFields)
   background: var(--color-surface);
   font-size: 13px;
   color: var(--color-text);
-  transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
   box-sizing: border-box;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .filter-control:focus {
@@ -485,24 +385,11 @@ watch(() => props.logType, loadFields)
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
-.filter-control:hover {
-  border-color: #cbd5e1;
-}
-
-.range-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.range-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.range-sep {
+.filter-hint {
+  margin: 0;
+  font-size: 11px;
   color: var(--color-text-muted);
-  font-size: 12px;
+  line-height: 1.4;
 }
 
 .filter-actions {
@@ -519,19 +406,18 @@ watch(() => props.logType, loadFields)
   color: var(--color-text-secondary);
   font-size: 13px;
   cursor: pointer;
-  transition: border-color 0.15s ease-out, color 0.15s ease-out, box-shadow 0.15s ease-out;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .btn-reset:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .filter-control,
-  .btn-reset {
-    transition: none;
+  .skeleton-field {
+    animation: none;
+    background: var(--color-bg);
   }
 }
 </style>

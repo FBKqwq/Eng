@@ -16,8 +16,9 @@ function mapSortField(field) {
 /**
  * 统一监控页日志查询状态机：时间窗 + 筛选 + 分页 + 排序。
  * @param {string} logType 日志大类（behavior/application/...）
+ * @param {{ field?: string, order?: string }} [defaultSort]
  */
-export function useLogQuery(logType) {
+export function useLogQuery(logType, defaultSort) {
   const { range } = useTimeRange()
 
   const loading = ref(false)
@@ -25,9 +26,14 @@ export function useLogQuery(logType) {
   const errorCode = ref(null)
   const items = ref([])
   const total = ref(0)
+  const tookMs = ref(null)
+  const hasMore = ref(false)
   const page = ref(1)
   const pageSize = ref(DEFAULT_PAGE_SIZE)
-  const sort = ref({ field: DEFAULT_SORT_FIELD, order: DEFAULT_SORT_ORDER })
+  const sort = ref({
+    field: defaultSort?.field || DEFAULT_SORT_FIELD,
+    order: defaultSort?.order === 'asc' ? 'asc' : DEFAULT_SORT_ORDER
+  })
   const keyword = ref('')
   const filters = ref({})
 
@@ -62,8 +68,10 @@ export function useLogQuery(logType) {
       const res = await searchLogs(buildPayload())
       if (unmounted || generation !== fetchGeneration) return
 
-      items.value = res.data?.items ?? []
+      items.value = (res.data?.items ?? []).map(enrichLogRow)
       total.value = res.data?.total ?? 0
+      tookMs.value = res.data?.took_ms ?? null
+      hasMore.value = Boolean(res.data?.has_more)
     } catch (e) {
       if (unmounted || generation !== fetchGeneration) return
 
@@ -72,6 +80,8 @@ export function useLogQuery(logType) {
       error.value = e.message ?? '查询失败'
       items.value = []
       total.value = 0
+      tookMs.value = null
+      hasMore.value = false
     } finally {
       if (!unmounted && generation === fetchGeneration) {
         loading.value = false
@@ -145,6 +155,8 @@ export function useLogQuery(logType) {
     errorCode,
     items,
     total,
+    tookMs,
+    hasMore,
     page,
     pageSize,
     sort,
@@ -156,5 +168,16 @@ export function useLogQuery(logType) {
     setKeyword,
     setFilters,
     resetFilters
+  }
+}
+
+/** 将 payload 中的专有字段提升到行顶层，便于表格渲染 */
+function enrichLogRow(item) {
+  if (!item || typeof item !== 'object') return item
+  const payload = item.payload && typeof item.payload === 'object' ? item.payload : {}
+  return {
+    ...payload,
+    ...item,
+    payload
   }
 }

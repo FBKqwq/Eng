@@ -6,7 +6,8 @@
 ## 2. 项目模块总览
 | 文件 | 主要职责 |
 |---|---|
-| `app/core/config.py` | Pydantic Settings：应用名、端口、Kafka、ES、日志生产间隔等；并加载 `config/LLM.yaml` 作为 LLM 调用统一配置 |
+| `app/core/config.py` | Pydantic Settings：应用名、端口、Kafka、ES、Kibana、Docker 监控等；并加载 `config/gateway.yaml`、`config/LLM.yaml` |
+| `config/gateway.yaml`（backend 根目录） | ELK / Kafka 网关统一配置：host、kafka、elasticsearch、kibana |
 | `config/LLM.yaml`（backend 根目录） | 大模型调用统一配置：provider/api_key/api_base/model_name/analysis_model/timeout/temperature |
 
 ## 3. 模块职责边界
@@ -27,7 +28,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Core | 框架占位已扩展 | 2026-06-16 | elk-backend-agent | 低 | 新增 LLM/分析调度配置占位项 |
+| Core | 框架占位已扩展 | 2026-06-23 | elk-backend-agent | 低 | 新增 gateway.yaml 作为 ELK/Kafka 网关统一配置来源 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -47,6 +48,7 @@
 | 2026-05-14 | 增加 Elasticsearch 用户名/密码配置项 | `app/core/config.py` | 与 `get_es_client` 的 `basic_auth` 对齐，兼容 `ELASTIC_PASSWORD` | 密钥不入库、不写入代码 |
 | 2026-06-16 | 新增 LLM/分析调度占位配置 | `app/core/config.py`、`.env.example` | 对齐总体规划 §2.7 环境变量约定 | 待 M3 配置真实 API Key |
 | 2026-06-22 | 新增 LLM 调用统一配置文件 | `config/LLM.yaml`、`app/core/config.py`、`.env.example`、`requirements.txt` | `config/LLM.yaml` 成为 LLM 配置统一来源（qwen3-plus / DashScope compatible-mode），非空 `LLM_*` 环境变量优先；新增 PyYAML 依赖；M3 测试 22 passed | api_key 已写入 YAML，生产建议改用环境变量注入 |
+| 2026-06-23 | 新增 ELK/Kafka 网关统一配置文件 | `config/gateway.yaml`、`config_example/gateway.yaml`、`app/core/config.py`、`.env.example` | `config/gateway.yaml` 成为 Kafka/ES/Kibana 地址统一来源；支持 `host` 一键切换 localhost / 局域网 IP；`kibana_base_url` 正式纳入 Settings | 远程连 Kafka 需同步修改 docker-compose 的 `KAFKA_ADVERTISED_LISTENERS` EXTERNAL 地址 |
 
 ## 2026-05-13 补充：Docker 监控配置
 
@@ -76,3 +78,26 @@
 | `ELASTIC_PASSWORD` | — | 与 `ELASTICSEARCH_PASSWORD` 等价别名，便于与 Compose 对齐 |
 
 说明：`app/services/elasticsearch/client.py` 在密码非空时优先采用进程环境中已设置的 `ELASTICSEARCH_*` / `ELASTIC_PASSWORD`（便于 task 在 import 之后 `load_dotenv`），否则使用 `Settings` 已加载字段。
+
+## 2026-06-23 补充：ELK / Kafka 网关配置（config/gateway.yaml）
+
+### 优先级
+
+1. 非空进程环境变量（`KAFKA_*` / `ELASTICSEARCH_*` / `KIBANA_BASE_URL`）
+2. `config/gateway.yaml`
+3. 代码内置默认值
+
+### 配置项
+
+| YAML 路径 | 映射 Settings 字段 | 说明 |
+| --- | --- | --- |
+| `gateway.host` | 用于自动拼接地址 | 本机填 `localhost`；局域网远程填宿主机 LAN IP |
+| `gateway.kafka.bootstrap_servers` | `kafka_bootstrap_servers` | 留空则 `{host}:9092` |
+| `gateway.kafka.topic` | `kafka_topic` | 默认 `app-logs` |
+| `gateway.elasticsearch.hosts` | `elasticsearch_hosts` | 留空则 `http://{host}:9200` |
+| `gateway.elasticsearch.index_pattern` | `elasticsearch_index_pattern` | 默认 `app-logs-*` |
+| `gateway.elasticsearch.username` | `elasticsearch_username` | 默认 `elastic` |
+| `gateway.elasticsearch.password` | `elasticsearch_password` | 留空则沿用 `.env` / 环境变量 |
+| `gateway.kibana.base_url` | `kibana_base_url` | 留空则 `http://{host}:5601` |
+
+局域网协作者：复制 `config_example/gateway.yaml` → `config/gateway.yaml`，`host` 填 Docker 宿主机 IP（当前：`26.167.86.202`）。`docker-compose.yml` 中 Kafka `PLAINTEXT_EXTERNAL` 已 advertise 该地址。

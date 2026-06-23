@@ -1,9 +1,5 @@
 <template>
-  <LogMonitorShell
-    :log-type="meta.logType"
-    :chart-templates="meta.chartTemplates"
-    :default-columns="meta.defaultColumns"
-  />
+  <LogMonitorShell :meta="meta" />
 </template>
 
 <script setup>

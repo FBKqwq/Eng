@@ -1,14 +1,10 @@
 <template>
-  <LogMonitorShell
-    :log-type="meta.logType"
-    :chart-templates="meta.chartTemplates"
-    :default-columns="meta.defaultColumns"
-  />
+  <LogMonitorShell :meta="meta" />
 </template>
 
 <script setup>
 import LogMonitorShell from '../../components/monitor/LogMonitorShell.vue'
 import { getLogTypeMeta } from '../../utils/logTypeMeta.js'
 
-const meta = getLogTypeMeta('web-server')
+const meta = getLogTypeMeta('web_server')
 </script>

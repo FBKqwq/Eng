@@ -1,11 +1,15 @@
 <template>
   <article class="chart-band-card">
     <header class="chart-band-card__header">
-      <div>
-        <p class="chart-band-card__eyebrow">{{ chartKindLabel }}</p>
+      <div class="chart-band-card__titles">
         <h3 class="chart-band-card__title">{{ config.title }}</h3>
+        <p class="chart-band-card__caliber">{{ caliberText }}</p>
       </div>
-      <span v-if="isMock" class="chart-band-card__mock">演示数据</span>
+      <div class="chart-band-card__meta">
+        <span v-if="isMock" class="chart-band-card__mock">演示数据</span>
+        <span v-if="unitText" class="chart-band-card__unit">单位：{{ unitText }}</span>
+        <span class="chart-band-card__refresh">刷新：{{ refreshedLabel }}</span>
+      </div>
     </header>
 
     <EmptyState
@@ -17,11 +21,18 @@
       <button type="button" class="chart-band-card__retry" @click="refresh">重试</button>
     </EmptyState>
 
+    <EmptyState
+      v-else-if="!loading && isEmpty"
+      compact
+      title="暂无聚合数据"
+      :description="config.description || '当前时间窗内无可用数据'"
+    />
+
     <TrendChart
       v-else-if="config.chartType === 'trend'"
       v-bind="chartProps"
       :loading="loading"
-      height="220px"
+      height="240px"
       :placeholder="config.title + '：暂无数据'"
     />
 
@@ -30,7 +41,7 @@
       v-bind="chartProps"
       :horizontal="isBarHorizontal"
       :loading="loading"
-      height="220px"
+      height="240px"
       :placeholder="config.title + '：暂无数据'"
     />
 
@@ -38,15 +49,16 @@
       v-else-if="config.chartType === 'pie'"
       v-bind="chartProps"
       :loading="loading"
-      height="220px"
+      height="240px"
       :placeholder="config.title + '：暂无数据'"
     />
   </article>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useMetrics } from '../../composables/useMetrics.js'
+import { resolveChartData, buildMetricsPayload } from '../../utils/chartResolvers.js'
 import TrendChart from '../common/charts/TrendChart.vue'
 import BarChart from '../common/charts/BarChart.vue'
 import PieChart from '../common/charts/PieChart.vue'
@@ -57,128 +69,39 @@ const props = defineProps({
   logType: { type: String, default: '' }
 })
 
-function buildExtraFilters(config) {
-  const opts = config.options ?? {}
-  const filters = {}
-
-  if (opts.group_by) filters.group_by = opts.group_by
-  if (opts.top_n != null) filters.top_n = opts.top_n
-  if (opts.metric) filters.metric = opts.metric
-
-  if (config.chartType === 'trend') {
-    filters.interval = opts.interval ?? '1m'
-  }
-
-  return filters
-}
-
-function formatBucketKey(key) {
-  if (key == null || key === '') return '未知'
-  return String(key)
-}
-
-function pickBuckets(aggregateData, config) {
-  if (!aggregateData) return []
-
-  const buckets = aggregateData.buckets ?? []
-  const extra = aggregateData.extra ?? {}
-  const groupBy = config.options?.group_by
-
-  if (groupBy === 'status_code' && extra.by_status_code?.length) {
-    return extra.by_status_code
-  }
-  if (groupBy === 'client_ip' && extra.by_client_ip?.length) {
-    return extra.by_client_ip
-  }
-
-  return buckets
-}
-
-function bucketCount(bucket) {
-  return Number(bucket?.count ?? 0)
-}
-
-function bucketValue(bucket) {
-  const value = bucket?.value
-  if (value != null && !Number.isNaN(Number(value))) return Number(value)
-  return bucketCount(bucket)
-}
-
-function resolveChartProps(config, aggregateData) {
-  const buckets = pickBuckets(aggregateData, config)
-  const chartType = config.chartType
-
-  if (chartType === 'pie') {
-    return {
-      data: buckets.map((b) => ({
-        name: formatBucketKey(b.key),
-        value: bucketCount(b)
-      }))
-    }
-  }
-
-  if (chartType === 'bar') {
-    if (config.template === 'latency') {
-      return {
-        categories: buckets.map((b) => formatBucketKey(b.key)),
-        series: [
-          {
-            name: 'P95 (ms)',
-            data: buckets.map((b) => Number(b.extra?.p95 ?? 0))
-          }
-        ]
-      }
-    }
-
-    const useMetricValue = config.template === 'infra_health'
-    return {
-      categories: buckets.map((b) => formatBucketKey(b.key)),
-      series: [
-        {
-          name: config.title,
-          data: buckets.map((b) => (useMetricValue ? bucketValue(b) : bucketCount(b)))
-        }
-      ]
-    }
-  }
-
-  if (chartType === 'trend') {
-    const useMetricValue = config.template === 'infra_health'
-    return {
-      categories: buckets.map((b) => formatBucketKey(b.key)),
-      series: [
-        {
-          name: config.title,
-          data: buckets.map((b) => (useMetricValue ? bucketValue(b) : bucketCount(b))),
-          area: true
-        }
-      ]
-    }
-  }
-
-  return { categories: [], series: [], data: [] }
-}
-
-const extraFilters = buildExtraFilters(props.config)
+const lastRefreshedAt = ref(null)
 
 const { data, loading, error, refresh, isMock } = useMetrics({
   template: props.config.template,
   logType: props.logType || undefined,
-  extraFilters,
+  extraFilters: buildMetricsPayload(props.config, props.logType),
   immediate: true
 })
 
-const chartProps = computed(() => resolveChartProps(props.config, data.value))
-
-const isBarHorizontal = computed(
-  () => props.config.chartType === 'bar' && props.config.options?.top_n != null
+watch(
+  () => data.value,
+  (val) => {
+    if (val) lastRefreshedAt.value = Date.now()
+  },
+  { immediate: true }
 )
 
-const chartKindLabel = computed(() => {
-  if (props.config.chartType === 'trend') return 'Trend'
-  if (props.config.chartType === 'bar') return 'Ranking'
-  if (props.config.chartType === 'pie') return 'Distribution'
-  return 'Metric'
+const resolved = computed(() => resolveChartData(props.config, data.value))
+const chartProps = computed(() => resolved.value.chartProps)
+const isEmpty = computed(() => resolved.value.meta.empty)
+const caliberText = computed(
+  () => resolved.value.meta.caliber || props.config.description || '后端预置聚合模板'
+)
+const unitText = computed(() => resolved.value.meta.unit || '')
+
+const isBarHorizontal = computed(
+  () => props.config.chartType === 'bar' && props.config.template !== 'behavior_funnel'
+)
+
+const refreshedLabel = computed(() => {
+  if (loading.value) return '加载中…'
+  if (!lastRefreshedAt.value) return '—'
+  return new Date(lastRefreshedAt.value).toLocaleTimeString('zh-CN', { hour12: false })
 })
 </script>
 
@@ -210,33 +133,42 @@ const chartKindLabel = computed(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--spacing-sm);
-  min-height: 34px;
-}
-
-.chart-band-card__eyebrow {
-  margin: 0 0 2px;
-  color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: uppercase;
 }
 
 .chart-band-card__title {
-  margin: 0;
+  margin: 0 0 4px;
   color: var(--color-text);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
 }
 
-.chart-band-card__mock {
+.chart-band-card__caliber {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.chart-band-card__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
   flex-shrink: 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.chart-band-card__mock {
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--color-warning-bg);
   color: var(--color-warning);
-  font-size: 11px;
-  line-height: 1.4;
+}
+
+.chart-band-card__unit,
+.chart-band-card__refresh {
+  white-space: nowrap;
 }
 
 .chart-band-card__retry {
@@ -249,14 +181,6 @@ const chartKindLabel = computed(() => {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.chart-band-card__retry:hover {
-  border-color: rgba(59, 130, 246, 0.42);
-  background: var(--color-primary-soft);
 }
 
 @media (prefers-reduced-motion: reduce) {

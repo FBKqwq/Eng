@@ -53,7 +53,7 @@
       <table class="log-table-grid">
         <thead>
           <tr>
-            <th class="col-expand" scope="col" aria-label="展开行" />
+            <th class="col-expand" scope="col" aria-label="展开原始 JSON" />
             <th
               v-for="col in columns"
               :key="col.key"
@@ -67,6 +67,7 @@
               @click="col.sortable && handleSort(col.key)"
             >
               <span class="th-label">{{ col.label }}</span>
+              <span v-if="col.unit && col.unit !== 'auto'" class="th-unit">({{ col.unit }})</span>
               <span v-if="col.sortable" class="sort-indicator" aria-hidden="true">
                 <span
                   class="sort-caret sort-caret--up"
@@ -92,7 +93,7 @@
                   type="button"
                   class="expand-btn"
                   :aria-expanded="isExpanded(rowIndex)"
-                  :aria-label="isExpanded(rowIndex) ? '收起行详情' : '展开行详情'"
+                  :aria-label="isExpanded(rowIndex) ? '收起 JSON' : '展开 JSON'"
                   @click="toggleExpand(rowIndex)"
                 >
                   <span class="expand-icon" :class="{ open: isExpanded(rowIndex) }" />
@@ -102,29 +103,22 @@
                 v-for="col in columns"
                 :key="`${rowKey(row, rowIndex)}-${col.key}`"
                 :class="cellClass(col, row)"
-                @click="col.key === 'trace_id' && stopRowToggle($event)"
+                @click.stop="handleCellClick(col, row, $event)"
               >
-                <SeverityBadge
-                  v-if="isLevelColumn(col.key)"
-                  :level="String(getCellValue(row, col.key) ?? '')"
+                <CellRenderer
+                  :row="row"
+                  :col="col"
+                  :copied-key="copiedKey"
+                  @copy="handleCopy"
+                  @trace="handleTraceNavigate(row)"
+                  @drill="handleDrill(col, row)"
                 />
-                <template v-else-if="col.key === 'trace_id'">
-                  <span class="trace-id tabular-nums">{{ displayCell(row, col) }}</span>
-                  <button
-                    v-if="getCellValue(row, 'trace_id')"
-                    type="button"
-                    class="trace-btn"
-                    @click.stop="handleTraceNavigate(row)"
-                  >
-                    追踪
-                  </button>
-                </template>
-                <span v-else class="cell-text">{{ displayCell(row, col) }}</span>
               </td>
             </tr>
             <tr v-if="isExpanded(rowIndex)" class="expand-row">
               <td :colspan="expandColspan">
                 <div class="expand-panel">
+                  <p class="expand-panel__hint">原始 JSON（辅助调试，非常规阅读入口）</p>
                   <pre class="expand-json">{{ formatRowJson(row) }}</pre>
                 </div>
               </td>
@@ -159,9 +153,7 @@
         >
           上一页
         </button>
-        <span class="page-info tabular-nums">
-          第 {{ page }} / {{ totalPages }} 页
-        </span>
+        <span class="page-info tabular-nums">第 {{ page }} / {{ totalPages }} 页</span>
         <button
           type="button"
           class="page-btn"
@@ -176,10 +168,16 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, defineComponent, h } from 'vue'
 import EmptyState from './EmptyState.vue'
 import SeverityBadge from './SeverityBadge.vue'
-import { formatDuration, formatNumber, formatTime } from '../../utils/format.js'
+import { formatNumber } from '../../utils/format.js'
+import {
+  formatCellDisplay,
+  getRowField,
+  httpStatusTone,
+  copyText
+} from '../../utils/logTableCells.js'
 
 const props = defineProps({
   columns: { type: Array, default: () => [] },
@@ -189,9 +187,11 @@ const props = defineProps({
   pageSize: { type: Number, default: 20 },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  logType: { type: String, default: '' },
+  drillableFields: { type: Array, default: () => [] },
   sort: {
     type: Object,
-    default: () => ({ field: '@timestamp', order: 'desc' })
+    default: () => ({ field: 'timestamp', order: 'desc' })
   }
 })
 
@@ -200,30 +200,119 @@ const emit = defineEmits([
   'update:pageSize',
   'sort-change',
   'trace-navigate',
+  'drill',
   'retry'
 ])
 
 const pageSizeOptions = [10, 20, 50, 100]
 const skeletonRowCount = 6
-
-const LEVEL_KEYS = new Set(['log_level', 'level', 'severity', 'risk_level'])
-const TIMESTAMP_KEYS = new Set(['@timestamp', 'timestamp', 'time', 'created_at'])
-const DURATION_KEYS = new Set([
-  'duration_ms',
-  'latency_ms',
-  'response_time',
-  'elapsed_ms',
-  'stay_duration'
-])
-const NUMERIC_KEYS = new Set([
-  'status_code',
-  'statusCode',
-  'error_code',
-  'metric_value',
-  'evidence_count'
-])
+const copiedKey = ref('')
+let copiedTimer = null
 
 const expandedRows = ref(new Set())
+
+const CellRenderer = defineComponent({
+  name: 'CellRenderer',
+  props: {
+    row: { type: Object, required: true },
+    col: { type: Object, required: true },
+    copiedKey: { type: String, default: '' }
+  },
+  emits: ['copy', 'trace', 'drill'],
+  setup(cellProps, { emit: cellEmit }) {
+    return () => {
+      const { row, col } = cellProps
+      const renderType = col.renderType || inferRenderType(col.key)
+      const value = getRowField(row, col.key)
+      const display = formatCellDisplay(row, { ...col, renderType })
+
+      if (renderType === 'log_level' || renderType === 'risk_level') {
+        return h(SeverityBadge, { level: String(value ?? ''), label: display })
+      }
+
+      if (renderType === 'http_status') {
+        return h('span', { class: ['http-status-pill', `tone-${httpStatusTone(value)}`] }, display)
+      }
+
+      if (renderType === 'trace') {
+        if (!value) return h('span', { class: 'cell-muted' }, '—')
+        return h('div', { class: 'cell-inline-actions' }, [
+          h('span', { class: 'cell-mono cell-ellipsis' }, display),
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'cell-action-btn',
+              onClick: (e) => {
+                e.stopPropagation()
+                cellEmit('trace')
+              }
+            },
+            '追踪'
+          )
+        ])
+      }
+
+      if (renderType === 'copyable' && value) {
+        const copyId = `${col.key}-${String(value)}`
+        return h('div', { class: 'cell-inline-actions' }, [
+          h('span', { class: 'cell-mono cell-ellipsis', title: display }, display),
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'cell-action-btn',
+              onClick: (e) => {
+                e.stopPropagation()
+                cellEmit('copy', { key: copyId, text: value })
+              }
+            },
+            cellProps.copiedKey === copyId ? '已复制' : '复制'
+          ),
+          col.drillable
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'cell-action-btn cell-action-btn--ghost',
+                  onClick: (e) => {
+                    e.stopPropagation()
+                    cellEmit('drill')
+                  }
+                },
+                '筛选'
+              )
+            : null
+        ])
+      }
+
+      if (renderType === 'change_summary') {
+        return h('span', { class: 'cell-ellipsis cell-pre-wrap', title: display }, display)
+      }
+
+      return h(
+        'span',
+        {
+          class: ['cell-text', renderType === 'duration' || renderType === 'metric' ? 'tabular-nums' : ''],
+          title: display.length > 40 ? display : undefined
+        },
+        display
+      )
+    }
+  }
+})
+
+function inferRenderType(key) {
+  if (key === 'log_level') return 'log_level'
+  if (key === 'status_code') return 'http_status'
+  if (key === 'risk_level') return 'risk_level'
+  if (key === 'trace_id') return 'trace'
+  if (['client_ip', 'request_uri', 'request_path', 'upstream_addr'].includes(key)) return 'copyable'
+  if (key === 'response_time_ms' || key === 'duration_ms') return 'duration'
+  if (key === 'metric_value') return 'metric'
+  if (key === 'change_summary') return 'change_summary'
+  return 'text'
+}
 
 const totalPages = computed(() => {
   const size = Math.max(1, props.pageSize)
@@ -231,22 +320,21 @@ const totalPages = computed(() => {
 })
 
 const showPagination = computed(() => !props.error && (props.total > 0 || props.items.length > 0))
-
 const expandColspan = computed(() => Math.max(props.columns.length + 1, 1))
 
 function columnStyle(col) {
   if (!col.width) return undefined
-  return { width: col.width, minWidth: col.width }
+  return { width: col.width, minWidth: col.width, maxWidth: col.width }
 }
 
 function skeletonWidth(col) {
-  if (col.key === 'trace_id') return '72%'
-  if (TIMESTAMP_KEYS.has(col.key)) return '88%'
+  if (col.renderType === 'trace' || col.key === 'trace_id') return '72%'
+  if (col.renderType === 'timestamp') return '88%'
   return '64%'
 }
 
 function rowKey(row, index) {
-  return row?.id ?? row?._id ?? row?.trace_id ?? `row-${index}`
+  return row?.log_id ?? row?.id ?? row?._id ?? `row-${index}`
 }
 
 function isExpanded(index) {
@@ -255,64 +343,27 @@ function isExpanded(index) {
 
 function toggleExpand(index) {
   const next = new Set(expandedRows.value)
-  if (next.has(index)) {
-    next.delete(index)
-  } else {
-    next.add(index)
-  }
+  if (next.has(index)) next.delete(index)
+  else next.add(index)
   expandedRows.value = next
 }
 
-function stopRowToggle(event) {
-  event.stopPropagation()
-}
-
-function getCellValue(row, key) {
-  if (!row || key == null) return undefined
-  return row[key]
-}
-
-function isLevelColumn(key) {
-  return LEVEL_KEYS.has(key)
-}
-
-function isNumericColumn(key, value) {
-  if (NUMERIC_KEYS.has(key)) return true
-  if (DURATION_KEYS.has(key)) return true
-  if (TIMESTAMP_KEYS.has(key)) return true
-  return typeof value === 'number' && Number.isFinite(value)
-}
-
-function displayCell(row, col) {
-  const value = getCellValue(row, col.key)
-  if (value == null || value === '') return '—'
-
-  if (TIMESTAMP_KEYS.has(col.key)) {
-    return formatTime(value)
-  }
-  if (DURATION_KEYS.has(col.key)) {
-    return formatDuration(value)
-  }
-  if (typeof value === 'object') {
-    return JSON.stringify(value)
-  }
-  return String(value)
-}
-
 function cellClass(col, row) {
-  const value = getCellValue(row, col.key)
+  const value = getRowField(row, col.key)
   return {
-    'cell-level': isLevelColumn(col.key),
-    'cell-trace': col.key === 'trace_id',
-    'tabular-nums': isNumericColumn(col.key, value)
+    'cell-level': col.renderType === 'log_level' || col.renderType === 'risk_level',
+    'cell-numeric': col.renderType === 'duration' || col.renderType === 'metric' || col.renderType === 'http_status',
+    'cell-actions': col.renderType === 'copyable' || col.renderType === 'trace',
+    'tabular-nums': typeof value === 'number'
   }
 }
 
 function formatRowJson(row) {
+  const source = row?.payload && typeof row.payload === 'object' ? row.payload : row
   try {
-    return JSON.stringify(row, null, 2)
+    return JSON.stringify(source, null, 2)
   } catch {
-    return String(row)
+    return String(source)
   }
 }
 
@@ -340,21 +391,42 @@ function handlePageSizeChange(event) {
   const nextSize = Number(event.target.value)
   if (!Number.isFinite(nextSize) || nextSize < 1) return
   emit('update:pageSize', nextSize)
-  if (props.page !== 1) {
-    emit('update:page', 1)
-  }
+  if (props.page !== 1) emit('update:page', 1)
 }
 
 function handleTraceNavigate(row) {
-  const traceId = getCellValue(row, 'trace_id')
+  const traceId = getRowField(row, 'trace_id')
   if (!traceId) return
   emit('trace-navigate', String(traceId))
+}
+
+function handleDrill(col, row) {
+  const value = getRowField(row, col.key)
+  if (!value) return
+  emit('drill', { target: col.drillTarget || 'keyword', value: String(value), field: col.key })
+}
+
+async function handleCopy({ key, text }) {
+  const ok = await copyText(text)
+  if (!ok) return
+  copiedKey.value = key
+  if (copiedTimer) clearTimeout(copiedTimer)
+  copiedTimer = setTimeout(() => {
+    copiedKey.value = ''
+  }, 1500)
+}
+
+function handleCellClick(col, row, event) {
+  if (col.drillable && col.drillTarget === 'trace') {
+    event.stopPropagation()
+    handleTraceNavigate(row)
+  }
 }
 </script>
 
 <style scoped>
 .log-table {
-  margin-top: var(--spacing-sm);
+  margin-top: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -376,7 +448,6 @@ function handleTraceNavigate(row) {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text);
 }
 
 .log-table-meta {
@@ -386,6 +457,7 @@ function handleTraceNavigate(row) {
 
 .log-table-scroll {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   transition: opacity 180ms ease;
 }
 
@@ -396,8 +468,10 @@ function handleTraceNavigate(row) {
 
 .log-table-grid {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: fixed;
 }
 
 .log-table-grid th {
@@ -408,7 +482,8 @@ function handleTraceNavigate(row) {
   border-bottom: 1px solid var(--color-border);
   background: var(--color-bg);
   white-space: nowrap;
-  user-select: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .log-table-grid th.sortable {
@@ -424,8 +499,11 @@ function handleTraceNavigate(row) {
   color: var(--color-primary);
 }
 
-.th-label {
-  vertical-align: middle;
+.th-unit {
+  margin-left: 2px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 400;
 }
 
 .sort-indicator {
@@ -462,7 +540,7 @@ function handleTraceNavigate(row) {
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text);
   vertical-align: middle;
-  max-width: 280px;
+  overflow: hidden;
 }
 
 .data-row {
@@ -497,15 +575,6 @@ function handleTraceNavigate(row) {
   background: var(--color-surface);
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.expand-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
 }
 
 .expand-icon {
@@ -522,59 +591,102 @@ function handleTraceNavigate(row) {
   transform: rotate(90deg);
 }
 
-.cell-text {
+.cell-text,
+.cell-ellipsis {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.cell-trace {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 140px;
+.cell-pre-wrap {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.trace-id {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+.cell-mono {
+  font-family: var(--font-mono);
   font-size: 12px;
+}
+
+.cell-muted {
+  color: var(--color-text-muted);
+}
+
+.cell-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cell-action-btn {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cell-action-btn--ghost {
   color: var(--color-text-secondary);
 }
 
-.trace-btn {
-  flex-shrink: 0;
+.http-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
   padding: 2px 8px;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  background: var(--color-info-bg);
-  color: var(--color-primary);
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.trace-btn:hover {
-  background: var(--color-primary);
-  color: var(--color-surface);
+.http-status-pill.tone-success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.http-status-pill.tone-warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.http-status-pill.tone-danger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.http-status-pill.tone-info {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.http-status-pill.tone-muted {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
 }
 
 .expand-row td {
   padding: 0;
-  border-bottom: 1px solid var(--color-border);
   background: #f9fafb;
 }
 
 .expand-panel {
   padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
-  animation: expand-in 220ms ease-out;
+}
+
+.expand-panel__hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 .expand-json {
@@ -583,10 +695,9 @@ function handleTraceNavigate(row) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;
-  color: var(--color-text);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
@@ -635,7 +746,6 @@ function handleTraceNavigate(row) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
-  color: var(--color-text);
   font-size: 13px;
 }
 
@@ -650,17 +760,8 @@ function handleTraceNavigate(row) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
-  color: var(--color-text);
   font-size: 13px;
   cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    color 160ms ease;
-}
-
-.page-btn:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
 }
 
 .page-btn:disabled {
@@ -683,22 +784,6 @@ function handleTraceNavigate(row) {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 160ms ease;
-}
-
-.retry-btn:hover {
-  opacity: 0.9;
-}
-
-@keyframes expand-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 @keyframes skeleton-shimmer {
@@ -710,24 +795,19 @@ function handleTraceNavigate(row) {
   }
 }
 
+@media (max-width: 640px) {
+  .log-table-grid {
+    min-width: 520px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .log-table-scroll,
   .data-row,
-  .expand-btn,
   .expand-icon,
-  .trace-btn,
-  .page-btn,
-  .retry-btn {
-    transition: none;
-  }
-
-  .expand-panel {
-    animation: none;
-  }
-
   .skeleton-block {
+    transition: none;
     animation: none;
-    background: #eceff3;
   }
 }
 </style>

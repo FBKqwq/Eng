@@ -21,7 +21,7 @@
 | --- | --- |
 | Web 框架 | FastAPI |
 | ASGI 服务 | Uvicorn |
-| 配置 | pydantic-settings，读取 `.env` |
+| 配置 | pydantic-settings，读取 `.env` + `config/gateway.yaml` + `config/LLM.yaml` |
 | Kafka | kafka-python |
 | Elasticsearch | elasticsearch Python client |
 | LLM / Chain | langchain-openai（可选，无 Key 时规则降级） |
@@ -34,7 +34,7 @@
 | 路径 | 职责 |
 | --- | --- |
 | `app/main.py` | 创建 FastAPI app，挂载 CORS 和 `api_router` |
-| `app/core/config.py` | 全局配置，包括 Kafka、ES、Docker 监控配置 |
+| `app/core/config.py` | 全局配置，包括 Kafka、ES、Kibana 网关（`config/gateway.yaml`）与 Docker 监控配置 |
 | `app/api/router.py` | v1 路由聚合，挂载到 `/api` |
 | `app/api/v1/*.py` | API 路由层，只接请求、调 service、返回 schema |
 | `app/schemas/*.py` | 请求/响应数据契约 |
@@ -186,3 +186,4 @@ curl.exe -i -H "Origin: http://localhost:5173" http://localhost:8000/api/v1/syst
 | 2026-06-16 | 按总体规划完成后端框架占位更新 | 见 `doc/后端开发总体规划-Services-LangGraph-MCP.md` 全文对应目录 | ES 扩建四模块、langchain/analysis/tools/report/alert 分域占位、API/schema/config 扩展 | 后续 M1→M7 逐步实现 |
 | 2026-06-22 | M1～M5 里程碑收口，同步目录级 DEV 文档 | `backend/DEV.md`、`app/api/DEV.md`、`app/services/DEV.md`、`app/tasks/DEV.md`、`app/schemas/DEV.md`、`doc/后端开发总体规划-Services-LangGraph-MCP.md` §0 | ES 聚合/上下文、工具层、LangChain、定时/规则子图、报告/预警持久化与 API 均已真实实现；pytest 110 passed | M6 `graph_main`、M7 MCP/关系发现待开发；频率规则聚合待 P1 |
 | 2026-06-23 | **首次真实 ELK+Kafka 端到端联调，修复 3 处问题** | `app/services/elasticsearch/aggregation_service.py`、`app/services/analysis/schemas.py`、`graph_scheduled.py`、`graph_rule.py`、`graph_main.py` + 对应 DEV.md；基础设施 `POST /_license/start_basic` | ① 基础设施：ES trial 许可证过期致 security 不合规（cluster.health 403），已启用永久 basic 许可证恢复；② 聚合 bug：`_terms_field` 误加 `.keyword` 致 terms 聚合恒空，已修；③ 时区 bug：定时窗口用 naive 本地时间致 ES 查询偏移 8 小时、证据恒空，已改 UTC。修复后 produce→Kafka→Logstash→ES、查询/聚合/上下文、定时+规则主图（真实 qwen LLM）、报告/预警持久化与去重幂等全链路跑通 | `cluster_status.get_elasticsearch_health_snapshot` 仍在 cluster.health 失败时整体判 `available=False`（健壮性 P2，basic 许可证永久有效后不复现）；scheduler 默认 15min 窗口，一次性触发需保证数据新鲜 |
+| 2026-06-23 | 新增 ELK/Kafka 网关 YAML 配置 | `config/gateway.yaml`、`config_example/gateway.yaml`、`app/core/config.py`、`.env.example`、`app/core/DEV.md` | 局域网协作可通过 `host` 切换连接地址；密码仍建议 `.env` 注入 | Kafka advertised 已改为 `26.167.86.202:9092`（见 `location/docker-compose.yml`） |
