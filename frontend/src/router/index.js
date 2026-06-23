@@ -16,6 +16,8 @@ import AnalysisFunnel from '../views/analysis/funnel.vue'
 import SystemPipeline from '../views/system/pipeline.vue'
 import SystemComponents from '../views/system/components.vue'
 import SystemConfig from '../views/system/config.vue'
+import GoulingmingStat from '../views/goulingming/stat/index.vue'
+import GoulingmingLogSearch from '../views/goulingming/log-search/index.vue'
 
 const routes = [
   {
@@ -119,6 +121,18 @@ const routes = [
         name: 'system-config',
         component: SystemConfig,
         meta: { title: '配置快照' }
+      },
+      {
+        path: 'goulingming/stat',
+        name: 'goulingming-stat',
+        component: GoulingmingStat,
+        meta: { title: 'Goulingming 统计看板' }
+      },
+      {
+        path: 'goulingming/log-search',
+        name: 'goulingming-log-search',
+        component: GoulingmingLogSearch,
+        meta: { title: 'Goulingming 日志检索' }
       },
       // 旧路由重定向
       { path: 'diagnosis', redirect: '/analysis/diagnosis' },

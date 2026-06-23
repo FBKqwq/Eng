@@ -35,7 +35,9 @@ export const menuTree = [
     children: [
       { title: '链路健康与验证', path: '/system/pipeline' },
       { title: '组件运行状态', path: '/system/components' },
-      { title: '配置快照', path: '/system/config' }
+      { title: '配置快照', path: '/system/config' },
+      { title: 'Goulingming 统计', path: '/goulingming/stat' },
+      { title: 'Goulingming 日志检索', path: '/goulingming/log-search' }
     ]
   }
 ]

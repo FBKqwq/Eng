@@ -6,6 +6,7 @@ from app.api.v1.system import router as system_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.alerts import router as alerts_router
 from app.api.v1.analysis import router as analysis_router
+from app.api.v1.goulingming import router as goulingming_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, prefix="/v1/health", tags=["health"])
@@ -15,3 +16,4 @@ api_router.include_router(system_router, prefix="/v1/system", tags=["system"])
 api_router.include_router(reports_router, prefix="/v1/reports", tags=["reports"])
 api_router.include_router(alerts_router, prefix="/v1/alerts", tags=["alerts"])
 api_router.include_router(analysis_router, prefix="/v1/analysis", tags=["analysis"])
+api_router.include_router(goulingming_router, prefix="/v1/goulingming", tags=["goulingming"])

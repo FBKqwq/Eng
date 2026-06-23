@@ -1,19 +1,26 @@
 <template>
-  <article class="stat-card">
-    <p class="label">{{ label }}</p>
-    <div class="value-row">
-      <p class="value tabular-nums">{{ displayValue }}</p>
-      <p
-        v-if="showDelta"
-        class="delta"
-        :class="`delta--${deltaDirection}`"
-        :aria-label="`环比${deltaAriaLabel}`"
-      >
-        <span class="delta-arrow" aria-hidden="true">{{ deltaArrow }}</span>
-        <span class="delta-value tabular-nums">{{ formattedDelta }}</span>
-      </p>
+  <article class="stat-card" :class="{ 'is-loading': loading }">
+    <div v-if="loading" class="stat-skeleton" aria-hidden="true">
+      <div class="sk sk--label" />
+      <div class="sk sk--value" />
+      <div class="sk sk--hint" />
     </div>
-    <p v-if="hint" class="hint">{{ hint }}</p>
+    <template v-else>
+      <p class="label">{{ label }}</p>
+      <div class="value-row">
+        <p class="value tabular-nums">{{ displayValue }}</p>
+        <p
+          v-if="showDelta"
+          class="delta"
+          :class="`delta--${deltaDirection}`"
+          :aria-label="`环比${deltaAriaLabel}`"
+        >
+          <span class="delta-arrow" aria-hidden="true">{{ deltaArrow }}</span>
+          <span class="delta-value tabular-nums">{{ formattedDelta }}</span>
+        </p>
+      </div>
+      <p v-if="hint" class="hint">{{ hint }}</p>
+    </template>
   </article>
 </template>
 
@@ -42,7 +49,9 @@ const props = defineProps({
     type: String,
     default: 'points',
     validator: (value) => ['points', 'ratio'].includes(value)
-  }
+  },
+  /** 加载中状态，显示骨架屏而非实际内容 */
+  loading: { type: Boolean, default: false }
 })
 
 const displayValue = computed(() => {
@@ -115,7 +124,7 @@ const deltaAriaLabel = computed(() => {
   opacity: 0.7;
 }
 
-.stat-card:hover {
+.stat-card:hover:not(.is-loading) {
   border-color: rgba(37, 99, 235, 0.24);
   box-shadow: var(--shadow-card-hover);
   transform: translateY(-1px);
@@ -128,6 +137,33 @@ const deltaAriaLabel = computed(() => {
   .stat-card:hover {
     transform: none;
   }
+  .stat-skeleton {
+    animation: none;
+    background: var(--color-bg);
+  }
+}
+
+/* Skeleton loading state */
+.stat-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sk {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-bg) 25%, #e5e7eb 50%, var(--color-bg) 75%);
+  background-size: 200% 100%;
+  animation: stat-shimmer 1.4s ease-in-out infinite;
+}
+
+.sk--label { width: 48%; height: 13px; }
+.sk--value { width: 70%; height: 28px; }
+.sk--hint  { width: 36%; height: 12px; }
+
+@keyframes stat-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .label {
