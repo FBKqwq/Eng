@@ -1,18 +1,48 @@
 <template>
   <article class="stat-card">
     <p class="label">{{ label }}</p>
-    <p class="value tabular-nums">{{ displayValue }}</p>
+    <div class="value-row">
+      <p class="value tabular-nums">{{ displayValue }}</p>
+      <p
+        v-if="showDelta"
+        class="delta"
+        :class="`delta--${deltaDirection}`"
+        :aria-label="`环比${deltaAriaLabel}`"
+      >
+        <span class="delta-arrow" aria-hidden="true">{{ deltaArrow }}</span>
+        <span class="delta-value tabular-nums">{{ formattedDelta }}</span>
+      </p>
+    </div>
     <p v-if="hint" class="hint">{{ hint }}</p>
   </article>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { formatNumber, formatPercent } from '../../utils/format.js'
 
 const props = defineProps({
   label: { type: String, required: true },
   value: { type: [String, Number], default: null },
-  hint: { type: String, default: '' }
+  hint: { type: String, default: '' },
+  /** 环比变化量；未传或无效时不展示箭头（默认隐藏） */
+  delta: { type: [Number, String], default: null },
+  /** 环比方向：up | down | flat */
+  deltaDirection: {
+    type: String,
+    default: '',
+    validator: (value) => !value || ['up', 'down', 'flat'].includes(value)
+  },
+  /**
+   * 环比数值口径：
+   * - points：百分点（如 12.5 表示 +12.5%），对齐 es_compare_time_windows.change_percent
+   * - ratio：小数比率（0.125 → 12.5%）
+   */
+  deltaKind: {
+    type: String,
+    default: 'points',
+    validator: (value) => ['points', 'ratio'].includes(value)
+  }
 })
 
 const displayValue = computed(() => {
@@ -21,6 +51,40 @@ const displayValue = computed(() => {
   }
   return props.value
 })
+
+const showDelta = computed(() => {
+  if (props.delta == null || props.delta === '') return false
+  if (!['up', 'down', 'flat'].includes(props.deltaDirection)) return false
+  return !Number.isNaN(Number(props.delta))
+})
+
+const formattedDelta = computed(() => {
+  if (!showDelta.value) return ''
+  const n = Number(props.delta)
+
+  if (props.deltaDirection === 'flat' || n === 0) {
+    return props.deltaKind === 'ratio' ? formatPercent(0) : '0%'
+  }
+
+  if (props.deltaKind === 'ratio') {
+    return formatPercent(n)
+  }
+
+  const sign = n > 0 ? '+' : '-'
+  return `${sign}${formatNumber(Math.abs(n))}%`
+})
+
+const deltaArrow = computed(() => {
+  if (props.deltaDirection === 'up') return '↑'
+  if (props.deltaDirection === 'down') return '↓'
+  return '→'
+})
+
+const deltaAriaLabel = computed(() => {
+  if (props.deltaDirection === 'up') return `上升 ${formattedDelta.value}`
+  if (props.deltaDirection === 'down') return `下降 ${formattedDelta.value}`
+  return `持平 ${formattedDelta.value}`
+})
 </script>
 
 <style scoped>
@@ -28,10 +92,15 @@ const displayValue = computed(() => {
   position: relative;
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
   border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.18s ease-out, transform 0.18s ease-out;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .stat-card::before {
@@ -42,12 +111,13 @@ const displayValue = computed(() => {
   right: 0;
   height: 2px;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
-  background: var(--color-primary);
-  opacity: 0.35;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-cyan));
+  opacity: 0.7;
 }
 
 .stat-card:hover {
-  box-shadow: var(--shadow-card);
+  border-color: rgba(37, 99, 235, 0.24);
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-1px);
 }
 
@@ -63,14 +133,50 @@ const displayValue = computed(() => {
 .label {
   margin: 0;
   font-size: 13px;
+  font-weight: 600;
   color: var(--color-text-secondary);
 }
 
+.value-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: var(--spacing-sm);
+}
+
 .value {
-  margin: var(--spacing-sm) 0 0;
+  margin: 0;
   font-size: 28px;
-  font-weight: 600;
+  font-weight: 800;
   color: var(--color-text);
+}
+
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.delta--up {
+  color: var(--color-success);
+}
+
+.delta--down {
+  color: var(--color-danger);
+}
+
+.delta--flat {
+  color: var(--color-text-muted);
+}
+
+.delta-arrow {
+  font-size: 11px;
+  line-height: 1;
 }
 
 .hint {

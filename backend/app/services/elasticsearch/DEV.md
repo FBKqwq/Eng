@@ -65,7 +65,7 @@
 **API 层（M1-06，见 `app/api/v1/logs.py`）**
 
 - `GET /api/v1/logs/fields`：按 log_type 返回字段目录（双模式：单类型 / 全量列表）。
-- `POST /api/v1/logs/aggregate`：转发 `aggregation_service.aggregate()`。
+- `POST /api/v1/logs/aggregate`：转发 `aggregation_service.aggregate()`；**可选 `template` 时走 `aggregate_by_template()` 六类预置模板**。
 
 ### 拆索引链路对齐（2026-06-16 基础设施 + 后端）
 
@@ -126,3 +126,4 @@
 | 2026-06-16 | M1 四模块真实 ES 实现 | `field_catalog.py` 等 | AC 全通过 | — |
 | 2026-06-16 | **拆索引链路对齐**：Logstash 按 log_type 写入拆分索引；`field_catalog` 统一 web_server 索引 segment（下划线）；`aggregation_service` 移除单索引回退 | `field_catalog.py`、`aggregation_service.py`、`logstash/pipeline/logstash.conf`、本 DEV.md | 指定 log_types 的聚合 API 命中 `app-logs-{type}-*`；pytest 18 passed（field_catalog + aggregation） | `search_logs` 仍用全局 pattern；历史统一索引数据仍在 |
 | 2026-06-23 | **真实 ES 联调修复聚合 bug**：`_terms_field` 原对所有字段补 `.keyword`，但索引模板将枚举字段直接映射为 `keyword`（仅 message/reason/change_summary 为 text+keyword 多字段），导致 `by_service` / `error_code` 分布 / `group_by` terms 聚合静默返回 0 桶；改为仅对多字段文本补 `.keyword`，其余原样返回 | `aggregation_service.py`、本 DEV.md | 真实 ES 验证：traffic.by_service、aggregate_errors、aggregate(group_by=service_name) 均正常返回桶 | — |
+| 2026-06-23 | **前后端全量联调**：`POST /logs/aggregate` 支持可选 `template` 路由六类预置模板；`aggregate_errors` 支持 `interval` 返回错误量时间直方图；新增 `aggregate_by_template()` | `schemas/log.py`、`aggregation_service.py`、`api/v1/logs.py`、`scripts/integration_smoke.py` | 13/13 API 冒烟通过；驾驶舱图表与监控页真实数据展示正常 | 通用 `group_by` 与多 log_type 白名单校验仍较严格，前端须走 template |

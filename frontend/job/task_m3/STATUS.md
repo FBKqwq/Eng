@@ -43,16 +43,16 @@
 
 | 任务 | 负责文件/目录 | 状态 | 负责人/Agent | 完成时间 | 分支/PR | 验收摘要 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| F3-01 | `api/system.js` | 未开始 | — | — | — | — | — |
-| F3-02 | `utils/systemStatus.js` | 未开始 | — | — | — | — | — |
-| F3-03 | `components/system/PipelineGraph.vue` | 未开始 | — | — | — | — | — |
-| F3-04 | `components/system/VerifyOutputPanel.vue` | 未开始 | — | — | — | — | — |
-| F3-05 | `views/system/pipeline.vue` | 未开始 | — | — | — | — | — |
-| F3-06 | `components/common/StatusCard.vue` | 未开始 | — | — | — | — | — |
-| F3-07 | `views/system/components.vue` | 未开始 | — | — | — | — | — |
-| F3-08 | `components/system/ConfigSnapshotCard.vue` | 未开始 | — | — | — | — | — |
-| F3-09 | `views/system/config.vue` | 未开始 | — | — | — | — | — |
-| F3-10 | `frontend/DEV.md` | 未开始 | — | — | — | — | 必须最后 |
+| F3-01 | `api/system.js` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04 通过：getSystemStatus 嵌套契约注释、verifyPipeline workers 默认 2、getHealth/getApiHealth 兼容、build OK | — |
+| F3-02 | `utils/systemStatus.js` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04 通过：normalizeComponents、getPipelineNodes、derivePipelineHealthTone、ES unknown 兜底、build OK | PipelineHealthDot/components 已消费 |
+| F3-03 | `components/system/PipelineGraph.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04 通过：四节点横向链路、状态色过渡、loading 骨架、build OK | — |
+| F3-04 | `components/system/VerifyOutputPanel.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04 通过：workers 参数、等宽输出折叠、running/error 态、build OK | — |
+| F3-05 | `views/system/pipeline.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04：status→PipelineGraph、verify→VerifyOutputPanel、错误态+重试、build OK | F7-05 粒子背板已挂载 |
+| F3-06 | `components/common/StatusCard.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04 通过：通用状态卡、四态色、port/container/detail、loading 骨架、build OK | — |
+| F3-07 | `views/system/components.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04 通过：六组件矩阵、60s 轮询、ES 兜底横幅、build OK | — |
+| F3-08 | `components/system/ConfigSnapshotCard.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04 通过：分组 KV 只读、敏感脱敏、Kibana/Discover 双入口 props、build OK | F7-03 discoverUrl 已接线 |
+| F3-09 | `views/system/config.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04：status→groups 映射、kibanaLinks 消费、缺失「未配置」、错误 EmptyState+重试、build OK | — |
+| F3-10 | `frontend/DEV.md` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04 通过：§6.5 系统三页、§7 兜底规则、§12 F3 开发日志已收敛 | **F3 里程碑可收口** |
 
 ---
 
@@ -60,9 +60,9 @@
 
 | 可派发任务 | 原因 |
 | --- | --- |
-| F3-01、F3-02、F3-06 | F1 完成后可并行 |
+| — | **F3 已全部完成** |
 
-> F3 与 F2 可并行开发（目录不重叠）。
+> F3 与 F2 可并行开发（目录不重叠）；系统运维三页已真实对接 status/verify。
 
 ---
 
@@ -72,3 +72,5 @@
 | --- | --- | --- |
 | 2026-06-23 | 初始化 | 创建 F3 任务规划（README/STATUS） |
 | 2026-06-23 | 补全 | 新增 PROMPT_DISPATCH + F3-01~10 任务细则 |
+| 2026-06-23 | F3-01 | system.js 扩展 getSystemStatus/verifyPipeline(workers)/getHealth 契约 |
+| 2026-06-23 | elk-frontend-agent | 追溯验收：F3-02~08 代码已落地；config 接入 kibanaLinks；STATUS 全表收口 |

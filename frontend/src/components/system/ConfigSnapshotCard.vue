@@ -2,7 +2,7 @@
   <section class="page-section config-snapshot">
     <header class="snapshot-header">
       <h2>配置快照</h2>
-      <span class="pending-tag">待接入：{{ pendingApi }}</span>
+      <span v-if="isPlaceholder" class="pending-tag">待接入：GET /system/status</span>
     </header>
 
     <div class="snapshot-groups">
@@ -15,23 +15,46 @@
         <dl class="kv-list">
           <div v-for="item in group.items" :key="item.key" class="kv-row">
             <dt>{{ item.key }}</dt>
-            <dd :class="{ masked: item.sensitive }">{{ formatValue(item) }}</dd>
+            <dd
+              :class="{ masked: isSensitiveItem(item) }"
+              :aria-label="isSensitiveItem(item) ? `${item.key}（已脱敏）` : undefined"
+            >
+              {{ formatValue(item) }}
+            </dd>
           </div>
         </dl>
       </article>
     </div>
 
-    <div v-if="kibanaUrl" class="kibana-row">
-      <a :href="kibanaUrl" target="_blank" rel="noopener noreferrer" class="kibana-btn">
-        打开 Kibana
+    <div v-if="hasKibana || hasDiscover" class="kibana-row">
+      <a
+        v-if="hasKibana"
+        :href="kibanaUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="kibana-btn"
+      >
+        {{ kibanaLabel }}
+      </a>
+      <a
+        v-if="hasDiscover"
+        :href="discoverUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="kibana-btn kibana-btn--secondary"
+      >
+        {{ discoverLabel }}
       </a>
     </div>
-    <p v-else class="kibana-hint">Kibana 入口：配置 VITE_KIBANA_URL 后显示（F3 阶段接入）</p>
+    <p v-else class="kibana-hint">Kibana 入口：配置 VITE_KIBANA_URL 后显示外链按钮</p>
   </section>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+
+/** 密钥类字段名模式：无论 value 是否传入，展示层永不泄露 */
+const SENSITIVE_KEY_RE = /(?:api[_-]?key|secret|token|password|credential|auth)/i
 
 const PLACEHOLDER_GROUPS = [
   {
@@ -45,14 +68,7 @@ const PLACEHOLDER_GROUPS = [
     title: 'Elasticsearch',
     items: [
       { key: 'hosts', value: '—' },
-      { key: 'cluster_name', value: '—' }
-    ]
-  },
-  {
-    title: '索引模式',
-    items: [
-      { key: 'index_pattern', value: 'app-logs-*-*' },
-      { key: 'log_types', value: '7 大类日志索引' }
+      { key: 'index_pattern', value: '—' }
     ]
   },
   {
@@ -60,24 +76,48 @@ const PLACEHOLDER_GROUPS = [
     items: [
       { key: 'provider', value: '—' },
       { key: 'model', value: '—' },
-      { key: 'api_key', value: '***', sensitive: true }
+      { key: 'api_key', value: '', sensitive: true }
     ]
   }
 ]
 
 const props = defineProps({
+  /** [{ title, items: [{ key, value, sensitive? }] }] */
   groups: { type: Array, default: () => [] },
-  pendingApi: { type: String, default: 'GET /system/status' },
-  kibanaUrl: { type: String, default: '' }
+  /** 有值时展示外链按钮 */
+  kibanaUrl: { type: String, default: '' },
+  /** Kibana 按钮文案 */
+  kibanaLabel: { type: String, default: '打开 Kibana' },
+  /** Discover 深链（F7-03 kibanaLinks 生成） */
+  discoverUrl: { type: String, default: '' },
+  /** Discover 按钮文案 */
+  discoverLabel: { type: String, default: '在 Discover 中打开' }
 })
 
+const isPlaceholder = computed(() => props.groups.length === 0)
+
 const displayGroups = computed(() =>
-  props.groups.length > 0 ? props.groups : PLACEHOLDER_GROUPS
+  isPlaceholder.value ? PLACEHOLDER_GROUPS : props.groups
 )
 
+const hasKibana = computed(() => Boolean(String(props.kibanaUrl || '').trim()))
+const hasDiscover = computed(() => Boolean(String(props.discoverUrl || '').trim()))
+
+function isSensitiveItem(item) {
+  if (!item || typeof item !== 'object') return false
+  if (item.sensitive === true) return true
+  return SENSITIVE_KEY_RE.test(String(item.key || ''))
+}
+
 function formatValue(item) {
-  if (item.sensitive) return '***'
-  return item.value ?? '—'
+  if (isSensitiveItem(item)) return '***'
+  const raw = item?.value
+  if (raw === null || raw === undefined || raw === '') return '—'
+  if (Array.isArray(raw)) {
+    const text = raw.map((entry) => String(entry)).filter(Boolean).join(', ')
+    return text || '—'
+  }
+  return String(raw)
 }
 </script>
 
@@ -110,7 +150,7 @@ function formatValue(item) {
 
 .snapshot-groups {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--spacing-md);
 }
 
@@ -119,10 +159,19 @@ function formatValue(item) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgb(15 23 42 / 6%));
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.snapshot-group:hover {
+  box-shadow: var(--shadow-md, 0 4px 12px rgb(15 23 42 / 8%));
+  transform: translateY(-1px);
 }
 
 .snapshot-group h3 {
   margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text);
@@ -162,9 +211,13 @@ function formatValue(item) {
 .kv-row dd.masked {
   letter-spacing: 2px;
   color: var(--color-text-secondary);
+  user-select: none;
 }
 
 .kibana-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
   margin-top: var(--spacing-md);
 }
 
@@ -185,15 +238,41 @@ function formatValue(item) {
   opacity: 0.9;
 }
 
+.kibana-btn--secondary {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
 .kibana-hint {
   margin: var(--spacing-md) 0 0;
   font-size: 12px;
   color: var(--color-text-secondary);
 }
 
+@media (max-width: 1024px) {
+  .snapshot-groups {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .snapshot-groups {
     grid-template-columns: 1fr;
+  }
+
+  .snapshot-group:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snapshot-group {
+    transition: none;
+  }
+
+  .snapshot-group:hover {
+    transform: none;
   }
 }
 </style>

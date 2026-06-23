@@ -50,8 +50,12 @@ async function fetchAlerts() {
     const res = await getActiveAlerts()
     const d = res?.data
     alertCount.value = d?.total ?? d?.items?.length ?? 0
-  } catch {
+  } catch (e) {
     alertCount.value = 0
+    const code = e?.error?.code
+    if (code) {
+      console.warn('[TopBar] getActiveAlerts failed:', code, e?.error?.message ?? e?.message)
+    }
   }
 }
 
@@ -61,17 +65,22 @@ usePolling(fetchAlerts, 30000, true)
 <style scoped>
 .top-bar {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-md);
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: var(--color-surface);
+  min-height: 64px;
+  padding: 14px var(--spacing-lg);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--color-border);
+  z-index: 10;
 }
 .page-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-text);
 }
 .top-actions {
   display: flex;
@@ -86,28 +95,42 @@ usePolling(fetchAlerts, 30000, true)
   color: var(--color-text-secondary);
 }
 .time-range select {
-  padding: 6px 10px;
+  min-height: 34px;
+  padding: 6px 32px 6px 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 600;
 }
 .alert-badge {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 12px;
+  min-height: 34px;
+  padding: 7px 12px;
   border-radius: var(--radius-sm);
-  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-subtle);
   font-size: 13px;
+  font-weight: 700;
   color: var(--color-text-secondary);
-  transition: color 150ms ease, box-shadow 150ms ease;
+  transition:
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast);
 }
 .alert-badge:hover {
+  border-color: rgba(220, 38, 38, 0.28);
+  background: #fff;
   box-shadow: var(--shadow-sm);
 }
 .alert-badge.active {
   color: var(--color-danger);
+  border-color: rgba(220, 38, 38, 0.24);
+  background: var(--color-danger-bg);
 }
 .alert-dot {
   position: absolute;

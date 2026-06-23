@@ -115,9 +115,10 @@ def aggregate_errors(
     end_time: datetime,
     top_n: int = 10,
     service_names: list[str] | None = None,
+    interval: TimeInterval | str | None = None,
     **_: Any,
 ) -> dict[str, Any]:
-    """错误统计：错误过滤 + error_code / status_code 分布。"""
+    """错误统计：错误过滤 + error_code / status_code 分布；带 interval 时返回错误量时间直方图。"""
     log_types = [LogType.application.value, LogType.web_server.value]
     window_error = _validate_time_window(start_time, end_time)
     if window_error:
@@ -141,6 +142,30 @@ def aggregate_errors(
             "minimum_should_match": 1,
         }
     }
+
+    if interval:
+        interval_val = _enum_value(interval) or TimeInterval.minute.value
+        body = {
+            "size": 0,
+            "query": query,
+            "aggs": {
+                "errors_over_time": {
+                    "date_histogram": {
+                        "field": "timestamp",
+                        "fixed_interval": interval_val,
+                        "min_doc_count": 0,
+                    }
+                }
+            },
+        }
+        return _execute_and_format(
+            index=index,
+            body=body,
+            group_by="timestamp",
+            interval=interval_val,
+            bucket_parser=lambda data: _parse_time_histogram_buckets(data, "errors_over_time"),
+        )
+
     body = {
         "size": 0,
         "query": query,
@@ -156,6 +181,53 @@ def aggregate_errors(
         group_by="error_code",
         interval=None,
         bucket_parser=_parse_errors_buckets,
+    )
+
+
+def aggregate_by_template(request: LogAggregateRequest) -> dict[str, Any]:
+    """按预置模板路由聚合，供 REST API 与 Agent 工具共用。"""
+    template = _enum_value(request.template)
+    dispatch: dict[str, Any] = {
+        "traffic": aggregate_traffic,
+        "errors": aggregate_errors,
+        "latency": aggregate_latency,
+        "behavior_funnel": aggregate_behavior_funnel,
+        "security": aggregate_security,
+        "infra_health": aggregate_infra_health,
+    }
+    handler = dispatch.get(template or "")
+    if handler is None:
+        return _error_response("template", None, f"未知的聚合模板: {template}")
+
+    capped = _cap_top_n(request.top_n)
+    service_names = request.service_names
+    start_time = request.start_time
+    end_time = request.end_time
+    interval = request.interval
+
+    if template == "traffic":
+        return handler(
+            start_time=start_time,
+            end_time=end_time,
+            interval=interval or TimeInterval.minute,
+            top_n=capped,
+            service_names=service_names,
+        )
+    if template == "errors":
+        return handler(
+            start_time=start_time,
+            end_time=end_time,
+            top_n=capped,
+            service_names=service_names,
+            interval=interval,
+        )
+    if template == "behavior_funnel":
+        return handler(start_time=start_time, end_time=end_time)
+    return handler(
+        start_time=start_time,
+        end_time=end_time,
+        top_n=capped,
+        service_names=service_names,
     )
 
 
@@ -519,17 +591,25 @@ def _parse_group_by_buckets(
 
 
 def _parse_traffic_buckets(aggs: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    buckets, _ = _parse_time_histogram_buckets(aggs, "traffic_over_time")
+    by_service = _terms_to_buckets(aggs.get("by_service", {}).get("buckets", []))
+    extra = {"by_service": by_service, "total_count": sum(b["count"] for b in buckets)}
+    return buckets, extra
+
+
+def _parse_time_histogram_buckets(
+    aggs: dict[str, Any],
+    agg_name: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     buckets: list[dict[str, Any]] = []
-    for bucket in aggs.get("traffic_over_time", {}).get("buckets", []):
+    for bucket in aggs.get(agg_name, {}).get("buckets", []):
         buckets.append(
             {
                 "key": _format_bucket_key(bucket.get("key_as_string") or bucket.get("key")),
                 "count": int(bucket.get("doc_count", 0)),
             }
         )
-    by_service = _terms_to_buckets(aggs.get("by_service", {}).get("buckets", []))
-    extra = {"by_service": by_service, "total_count": sum(b["count"] for b in buckets)}
-    return buckets, extra
+    return buckets, None
 
 
 def _parse_errors_buckets(aggs: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:

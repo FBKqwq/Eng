@@ -10,23 +10,7 @@
 <script setup>
 import { computed } from 'vue'
 import BaseChart from './BaseChart.vue'
-
-const CHART_COLORS = {
-  primary: '#3b82f6',
-  success: '#16a34a',
-  warning: '#d97706',
-  danger: '#dc2626',
-  info: '#0284c7',
-  textSecondary: '#6b7280'
-}
-
-const SERIES_PALETTE = [
-  CHART_COLORS.primary,
-  CHART_COLORS.info,
-  CHART_COLORS.success,
-  CHART_COLORS.warning,
-  CHART_COLORS.danger
-]
+import { chartColors, chartPalette, legendStyle, tooltipStyle } from '../../../utils/chartTheme.js'
 
 const props = defineProps({
   /** 漏斗阶段：[{ name, value }] */
@@ -44,12 +28,9 @@ const chartOption = computed(() => {
   if (!hasData.value) return null
 
   return {
-    color: SERIES_PALETTE,
-    tooltip: { trigger: 'item', formatter: '{b}: {c}' },
-    legend: {
-      bottom: 0,
-      textStyle: { color: CHART_COLORS.textSecondary, fontSize: 11 }
-    },
+    color: chartColors,
+    tooltip: { trigger: 'item', formatter: '{b}: {c}', ...tooltipStyle() },
+    legend: legendStyle(),
     series: [
       {
         type: 'funnel',
@@ -67,9 +48,13 @@ const chartOption = computed(() => {
           show: true,
           position: 'inside',
           color: '#fff',
-          fontSize: 12
+          fontSize: 12,
+          fontWeight: 700
         },
-        itemStyle: { borderColor: '#fff', borderWidth: 1 },
+        itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 4 },
+        emphasis: {
+          label: { color: chartPalette.text }
+        },
         data: props.data
       }
     ]

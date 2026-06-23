@@ -26,9 +26,10 @@ defineProps({
   justify-content: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-lg) var(--spacing-md);
-  border: 1px dashed var(--color-border);
+  border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 0.92));
   color: var(--color-text-secondary);
   text-align: center;
   min-height: 120px;
@@ -38,8 +39,15 @@ defineProps({
   padding: 16px;
 }
 .empty-icon {
-  font-size: 24px;
-  opacity: 0.5;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 18px;
+  opacity: 1;
 }
 .empty-state h3 {
   margin: 0;

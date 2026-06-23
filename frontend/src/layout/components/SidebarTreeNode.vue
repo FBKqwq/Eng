@@ -71,11 +71,17 @@ function emitToggle() {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  margin: 2px 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--color-sidebar-text);
   font-size: 14px;
+  font-weight: 700;
   user-select: none;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .group-header:hover {
@@ -94,12 +100,17 @@ function emitToggle() {
 
 .leaf-link {
   display: block;
-  padding: 8px 12px;
+  margin: 2px 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
   color: var(--color-sidebar-text-muted);
   font-size: 13px;
-  border-left: 3px solid transparent;
+  border: 1px solid transparent;
   text-decoration: none;
-  transition: background 0.15s ease-out, color 0.15s ease-out, border-color 0.15s ease-out;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .leaf-link:hover {
@@ -109,8 +120,10 @@ function emitToggle() {
 
 .leaf-link.active {
   color: #fff;
-  background: var(--color-sidebar-active);
-  border-left-color: var(--color-primary);
+  background:
+    linear-gradient(90deg, rgba(37, 99, 235, 0.32), rgba(8, 145, 178, 0.16)),
+    var(--color-sidebar-active);
+  border-color: rgba(96, 165, 250, 0.4);
   font-weight: 600;
 }
 

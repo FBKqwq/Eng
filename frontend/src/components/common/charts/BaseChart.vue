@@ -44,16 +44,28 @@ const props = defineProps({
 
 const chartRef = ref(null)
 let chartInstance = null
+let needsFullReplace = true
+let motionQuery = null
 
-const isEmpty = computed(() => !props.option || Object.keys(props.option).length === 0)
+/** 图表数据刷新过渡时长（skill §9.3：300~500ms） */
+const CHART_ANIMATION_MS = 400
 
-/** 合并动效默认项，供数据刷新时平滑过渡 */
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+/** 合并动效默认项；reduce-motion 时关闭 ECharts 动画 */
 function withAnimationDefaults(option) {
+  if (prefersReducedMotion()) {
+    return { ...option, animation: false }
+  }
   return {
+    ...option,
     animation: true,
-    animationDuration: 500,
-    animationDurationUpdate: 500,
-    ...option
+    animationDuration: CHART_ANIMATION_MS,
+    animationDurationUpdate: CHART_ANIMATION_MS,
+    animationEasing: 'cubicOut',
+    animationEasingUpdate: 'cubicOut'
   }
 }
 
@@ -61,16 +73,26 @@ function initChart() {
   if (!chartRef.value || props.loading || isEmpty.value) return
   if (!chartInstance) {
     chartInstance = echarts.init(chartRef.value)
+    needsFullReplace = true
   }
-  chartInstance.setOption(withAnimationDefaults(props.option), { notMerge: false })
+  chartInstance.setOption(withAnimationDefaults(props.option), {
+    notMerge: needsFullReplace,
+    lazyUpdate: false
+  })
+  needsFullReplace = false
 }
 
 function clearChart() {
   chartInstance?.clear()
+  needsFullReplace = true
 }
 
 function handleResize() {
   chartInstance?.resize()
+}
+
+function handleMotionPreferenceChange() {
+  refreshChart()
 }
 
 async function refreshChart() {
@@ -82,15 +104,22 @@ async function refreshChart() {
   initChart()
 }
 
+const isEmpty = computed(() => !props.option || Object.keys(props.option).length === 0)
+
 watch(() => props.option, refreshChart, { deep: true })
 watch(() => props.loading, refreshChart)
 
 onMounted(() => {
+  if (typeof window !== 'undefined') {
+    motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    motionQuery.addEventListener('change', handleMotionPreferenceChange)
+  }
   initChart()
   window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
+  motionQuery?.removeEventListener('change', handleMotionPreferenceChange)
   window.removeEventListener('resize', handleResize)
   chartInstance?.dispose()
   chartInstance = null
@@ -105,9 +134,12 @@ onBeforeUnmount(() => {
 .chart-canvas {
   width: 100%;
   height: 100%;
+  opacity: 1;
+  transition: opacity var(--transition-chart);
 }
 .chart-canvas--hidden {
-  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 .chart-overlay {
   position: absolute;
@@ -115,8 +147,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-surface);
-  border: 1px dashed var(--color-border);
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.95));
+  border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
   font-size: 13px;

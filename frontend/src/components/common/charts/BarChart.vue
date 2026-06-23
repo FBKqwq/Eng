@@ -10,24 +10,14 @@
 <script setup>
 import { computed } from 'vue'
 import BaseChart from './BaseChart.vue'
-
-const CHART_COLORS = {
-  primary: '#3b82f6',
-  success: '#16a34a',
-  warning: '#d97706',
-  danger: '#dc2626',
-  info: '#0284c7',
-  border: '#e5e7eb',
-  textSecondary: '#6b7280'
-}
-
-const SERIES_PALETTE = [
-  CHART_COLORS.primary,
-  CHART_COLORS.success,
-  CHART_COLORS.warning,
-  CHART_COLORS.danger,
-  CHART_COLORS.info
-]
+import {
+  categoryAxis,
+  chartColors,
+  chartGrid,
+  legendStyle,
+  tooltipStyle,
+  valueAxis
+} from '../../../utils/chartTheme.js'
 
 const props = defineProps({
   categories: { type: Array, default: () => [] },
@@ -49,38 +39,26 @@ const chartOption = computed(() => {
   if (!hasData.value) return null
 
   const showLegend = props.series.length > 1
-  const categoryAxis = {
-    type: 'category',
-    data: props.categories,
-    axisLine: { lineStyle: { color: CHART_COLORS.border } },
-    axisLabel: { color: CHART_COLORS.textSecondary, fontSize: 11 }
-  }
-  const valueAxis = {
-    type: 'value',
-    axisLabel: { color: CHART_COLORS.textSecondary, fontSize: 11 },
-    splitLine: { lineStyle: { color: CHART_COLORS.border, type: 'dashed' } }
-  }
+  const catAxis = categoryAxis(props.categories)
+  const valAxis = valueAxis()
 
   return {
-    color: SERIES_PALETTE,
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: showLegend
-      ? { bottom: 0, textStyle: { color: CHART_COLORS.textSecondary } }
-      : undefined,
-    grid: {
-      left: 48,
-      right: 24,
-      top: 24,
-      bottom: showLegend ? 40 : 24,
-      containLabel: false
-    },
-    xAxis: props.horizontal ? valueAxis : categoryAxis,
-    yAxis: props.horizontal ? categoryAxis : valueAxis,
+    color: chartColors,
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, ...tooltipStyle() },
+    legend: showLegend ? legendStyle() : undefined,
+    grid: chartGrid({ legend: showLegend, horizontal: props.horizontal }),
+    xAxis: props.horizontal ? valAxis : catAxis,
+    yAxis: props.horizontal ? catAxis : valAxis,
     series: props.series.map((s, i) => ({
       name: s.name || `系列${i + 1}`,
       type: 'bar',
       data: s.data,
-      barMaxWidth: 32
+      barMaxWidth: 28,
+      itemStyle: {
+        borderRadius: props.horizontal ? [0, 6, 6, 0] : [6, 6, 0, 0],
+        color: chartColors[i % chartColors.length]
+      },
+      emphasis: { focus: 'series' }
     }))
   }
 })

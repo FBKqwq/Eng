@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
 """
 负责规定：一条日志长什么样，怎么查，怎么回
@@ -216,6 +216,17 @@ class TimeInterval(str, Enum):
     minute = "1m"
     hour = "1h"
     day = "1d"
+
+
+class AggregateTemplate(str, Enum):
+    """六类预置聚合模板，与 aggregation_service 及前端 metrics.js 对齐。"""
+
+    traffic = "traffic"
+    errors = "errors"
+    latency = "latency"
+    behavior_funnel = "behavior_funnel"
+    security = "security"
+    infra_health = "infra_health"
 
 
 # =========================
@@ -481,10 +492,20 @@ class LogAggregateRequest(BaseModel):
     end_time: datetime
     service_names: Optional[List[str]] = None
     log_types: Optional[List[LogType]] = None
-    group_by: AggregateField
+    template: Optional[AggregateTemplate] = Field(
+        default=None,
+        description="预置聚合模板；提供时走六类模板实现，group_by 可省略",
+    )
+    group_by: Optional[AggregateField] = None
     interval: Optional[TimeInterval] = None
     top_n: int = 10
     filters: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="after")
+    def _require_template_or_group_by(self) -> "LogAggregateRequest":
+        if self.template is None and self.group_by is None:
+            raise ValueError("template 与 group_by 至少提供一个")
+        return self
 
 
 class LogContextRequest(BaseModel):

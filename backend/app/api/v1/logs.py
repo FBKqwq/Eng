@@ -8,7 +8,7 @@ from app.schemas.log import (
     LogSearchData,
 )
 from app.schemas.response import ApiCode, ApiResponse, error_envelope, ok_envelope
-from app.services.elasticsearch.aggregation_service import aggregate
+from app.services.elasticsearch.aggregation_service import aggregate, aggregate_by_template
 from app.services.elasticsearch.field_catalog import get_catalog_for_log_type, list_registered_log_types
 from app.services.elasticsearch.log_query_service import search_logs
 
@@ -43,7 +43,7 @@ def log_fields(
 
 @router.post("/aggregate", response_model=ApiResponse[LogAggregateData])
 def log_aggregate(payload: LogAggregateRequest) -> ApiResponse[LogAggregateData]:
-    result = aggregate(payload)
+    result = aggregate_by_template(payload) if payload.template else aggregate(payload)
     data = LogAggregateData(**result)
     if not result.get("available", False):
         return error_envelope(

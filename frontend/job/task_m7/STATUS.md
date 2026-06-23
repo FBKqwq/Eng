@@ -39,12 +39,12 @@
 
 | 任务 | 负责文件/目录 | 状态 | 负责人/Agent | 完成时间 | 分支/PR | 验收摘要 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| F7-01 | `RelationInsightCard.vue` | 未开始 | — | — | — | — | — |
-| F7-02 | `StatCard.vue`+`funnel.vue`对比 | 未开始 | — | — | — | — | — |
-| F7-03 | env.example+kibanaLinks.js | 未开始 | — | — | — | — | — |
-| F7-04 | styles+BaseChart 动效 | 未开始 | — | — | — | — | — |
-| F7-05 | ParticleBackdrop+白名单挂载 | 未开始 | — | — | — | — | 可选 |
-| F7-06 | `frontend/DEV.md` | 未开始 | — | — | — | — | 必须最后 |
+| F7-01 | `RelationInsightCard.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04：箭头卡+双迷你折线、空数据不占位、reports.vue 已传 relations、build OK | —
+| F7-02 | `StatCard.vue`+`funnel.vue`对比 | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04：StatCard delta 箭头（未传则隐藏）、漏斗对比 tab 未就绪隐藏、双漏斗编排预留、build OK | `COMPARE_TAB_READY=false`；HealthOverview 待后续传 delta |
+| F7-03 | env.example+kibanaLinks.js | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~04：.env.example 文档化、Discover/Dashboard 深链、无 URL 返回 null、config.vue 已消费、build OK | —
+| F7-04 | styles+BaseChart 动效 | 已完成 | elk-frontend-agent (F7-04) | 2026-06-23 | 工作区 | AC-01~AC-04：图表 400ms 过渡、page-section hover、reduce-motion 全局+BaseChart 关闭动画、build 通过 | 仅修改 index.css + BaseChart.vue |
+| F7-05 | ParticleBackdrop+白名单挂载 | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | P-01~P-07：双层噪声流场+三页挂载、reduce-motion 静态降级、build OK | dashboard/pipeline/diagnosis 各 1 处 |
+| F7-06 | `frontend/DEV.md` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04：§6.19 F7 增强、§10.1 F1~F7 里程碑总览、粒子启用记录、§12 F7 日志 | F7 阶段收尾；联调项见 DEV §10.2 |
 
 ---
 
@@ -52,7 +52,7 @@
 
 | 可派发任务 | 原因 |
 | --- | --- |
-| — | 须 F4/F6 主体完成后按依赖派发 |
+| — | **F7 全部任务已完成**；后续为联调小改，无新 F7 派发项 |
 
 ---
 
@@ -61,3 +61,8 @@
 | 时间 | 操作人/Agent | 说明 |
 | --- | --- | --- |
 | 2026-06-23 | 初始化 | 创建 F7 任务规划（README/STATUS/PROMPT_DISPATCH + F7-01~06） |
+| 2026-06-23 | elk-frontend-agent (F7-04) | 完成动效抛光：transition 令牌、page-section hover、BaseChart 400ms 过渡与 reduce-motion |
+| 2026-06-23 | elk-frontend-agent (F7-01) | RelationInsightCard：relation_chain 箭头卡、双 TrendChart 迷你折线、空数据 v-if 降级 |
+| 2026-06-23 | elk-frontend-agent (F7-02) | StatCard 环比箭头 props；funnel 时段对比 tab 编排（COMPARE_TAB_READY 默认隐藏） |
+| 2026-06-23 | elk-frontend-agent (F7-05) | ParticleBackdrop：Simplex 流场双层粒子、三白名单页挂载、性能分级与 reduce-motion 静态备选 |
+| 2026-06-23 | elk-frontend-agent (F7-06) | DEV.md 收敛：F1~F7 里程碑总览、F7 增强 §6.19、动效/粒子验收记录、开发日志收尾 |

@@ -10,14 +10,7 @@
 <script setup>
 import { computed } from 'vue'
 import BaseChart from './BaseChart.vue'
-
-/** 与设计令牌 index.css 对齐的图表色 */
-const CHART_COLORS = {
-  success: '#16a34a',
-  warning: '#d97706',
-  danger: '#dc2626',
-  textSecondary: '#6b7280'
-}
+import { chartPalette, tooltipStyle } from '../../../utils/chartTheme.js'
 
 const props = defineProps({
   /** 仪表当前值；null/undefined 时显示空态 */
@@ -44,28 +37,48 @@ const chartOption = computed(() => {
         type: 'gauge',
         min: props.min,
         max: props.max,
+        startAngle: 205,
+        endAngle: -25,
+        center: ['50%', '54%'],
+        radius: '86%',
         progress: { show: true, width: 12 },
         axisLine: {
           lineStyle: {
             width: 12,
             color: [
-              [0.6, CHART_COLORS.danger],
-              [0.8, CHART_COLORS.warning],
-              [1, CHART_COLORS.success]
+              [0.6, chartPalette.danger],
+              [0.8, chartPalette.warning],
+              [1, chartPalette.success]
             ]
           }
         },
         axisTick: { show: false },
         splitLine: { show: false },
-        axisLabel: { color: CHART_COLORS.textSecondary, fontSize: 11 },
-        pointer: { width: 5 },
+        axisLabel: {
+          distance: 10,
+          color: chartPalette.label,
+          fontSize: 10
+        },
+        pointer: {
+          length: '48%',
+          width: 5,
+          itemStyle: { color: chartPalette.primary }
+        },
+        title: {
+          offsetCenter: [0, '36%'],
+          color: chartPalette.label,
+          fontSize: 12,
+          fontWeight: 600
+        },
         detail: {
           valueAnimation: true,
           formatter: `{value}${props.unit}`,
-          fontSize: 24,
-          fontWeight: 'bold',
-          color: CHART_COLORS.textSecondary
+          offsetCenter: [0, '58%'],
+          fontSize: 28,
+          fontWeight: 800,
+          color: chartPalette.text
         },
+        tooltip: tooltipStyle(),
         data: [{ value: props.value, name: props.title }]
       }
     ]

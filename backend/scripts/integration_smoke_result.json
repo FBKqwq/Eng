@@ -1,0 +1,67 @@
+[
+  {
+    "name": "GET /health",
+    "ok": true,
+    "detail": "status=ok"
+  },
+  {
+    "name": "GET /system/status",
+    "ok": true,
+    "detail": "kafka=True, es=True, docs=54084"
+  },
+  {
+    "name": "GET /logs/fields",
+    "ok": true,
+    "detail": "types=7"
+  },
+  {
+    "name": "GET /logs/fields?log_type=application",
+    "ok": true,
+    "detail": "filter_fields=40"
+  },
+  {
+    "name": "POST /logs/search",
+    "ok": true,
+    "detail": "total=192, items=10"
+  },
+  {
+    "name": "POST /logs/aggregate (template=traffic)",
+    "ok": true,
+    "detail": "buckets=15, total=255, took_ms=2"
+  },
+  {
+    "name": "POST /logs/aggregate (template=errors)",
+    "ok": true,
+    "detail": "error_buckets=7, by_service=5"
+  },
+  {
+    "name": "GET /alerts/active",
+    "ok": true,
+    "detail": "total=2"
+  },
+  {
+    "name": "GET /reports/recent",
+    "ok": true,
+    "detail": "total=7, items=5"
+  },
+  {
+    "name": "GET /reports/{id}",
+    "ok": true,
+    "detail": "report_id=c9d323f0-c2b1-44bd-8cdd-e6c88258156e, has_report=True"
+  },
+  {
+    "name": "GET /analysis/runs/recent",
+    "ok": true,
+    "detail": "items=5"
+  },
+  {
+    "name": "POST /diagnosis",
+    "ok": true,
+    "detail": "route=rule, severity=high"
+  },
+  {
+    "name": "POST /analysis/run",
+    "ok": true,
+    "detail": "report_id=b79fc917-99a4-4fb6-8b23-034c95bc7361, nodes=13, errors=[]"
+  }
+]

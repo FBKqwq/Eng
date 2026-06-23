@@ -31,28 +31,38 @@ provideTimeRange()
 <style scoped>
 .layout {
   display: flex;
-  min-height: 100vh;
-  background: var(--color-bg);
+  height: 100%;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(245, 247, 251, 0)),
+    var(--color-bg);
 }
 .sidebar {
   display: flex;
   flex-direction: column;
   width: 240px;
   flex-shrink: 0;
-  background: var(--color-sidebar);
+  height: 100%;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(37, 99, 235, 0.12), transparent 24%),
+    var(--color-sidebar);
   color: var(--color-sidebar-text);
+  border-right: 1px solid var(--color-sidebar-border);
 }
 .brand {
-  padding: 20px 16px 12px;
+  flex-shrink: 0;
+  padding: 22px 16px 16px;
   border-bottom: 1px solid var(--color-sidebar-border);
 }
 .brand h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 17px;
+  font-weight: 800;
   color: #fff;
 }
 .brand p {
-  margin: 4px 0 0;
+  margin: 5px 0 0;
   font-size: 11px;
   color: var(--color-sidebar-text-muted);
 }
@@ -66,10 +76,14 @@ provideTimeRange()
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .main {
   flex: 1;
+  min-height: 0;
   padding: 24px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 </style>

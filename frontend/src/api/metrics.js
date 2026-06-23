@@ -1,70 +1,57 @@
 import { aggregateLogs } from './logs.js'
 
-/** 后端聚合未对接或离线演示时启用；mock 形态对齐解包后的 aggregate 负载 */
-export const USE_MOCK = true
+/**
+ * 离线演示时临时改为 true；默认走后端 POST /logs/aggregate（template 路由六类预置模板）。
+ */
+export const USE_MOCK = false
 
-const mockAggregate = (groupBy) =>
+/**
+ * @param {string} template
+ * @param {string} [interval]
+ * @returns {Promise<{ data: { group_by: string, buckets: [], took_ms: number, interval?: string } }>}
+ */
+const mockAggregate = (template, interval) =>
   Promise.resolve({
-    data: { group_by: groupBy, buckets: [], took_ms: 0 }
+    data: {
+      group_by: template,
+      buckets: [],
+      took_ms: 0,
+      ...(interval ? { interval } : {})
+    }
   })
 
-/** 流量趋势：application + web_server，按服务名与时间粒度聚合 */
-export const queryTraffic = (payload) => {
-  if (USE_MOCK) return mockAggregate('service_name')
+/**
+ * 六类业务聚合模板 → POST /logs/aggregate { template, ... }
+ * 与后端 aggregation_service 预置模板对齐，禁止手写 group_by 冒充模板响应。
+ *
+ * @param {string} template traffic | errors | latency | behavior_funnel | security | infra_health
+ * @param {Record<string, unknown>} payload start_time / end_time 及可选 interval、top_n 等
+ */
+function queryByTemplate(template, payload = {}) {
+  if (USE_MOCK) {
+    return mockAggregate(template, payload.interval)
+  }
   return aggregateLogs({
-    group_by: 'service_name',
-    interval: '1m',
-    log_types: ['application', 'web_server'],
+    template,
     ...payload
   })
 }
 
-/** 错误分布：application + web_server，按 error_code 聚合 */
-export const queryErrors = (payload) => {
-  if (USE_MOCK) return mockAggregate('error_code')
-  return aggregateLogs({
-    group_by: 'error_code',
-    log_types: ['application', 'web_server'],
-    ...payload
-  })
-}
+/** 流量趋势模板 */
+export const queryTraffic = (payload) =>
+  queryByTemplate('traffic', { interval: '1m', ...payload })
 
-/** 耗时趋势：application + web_server + performance，按 service_name 聚合 */
-export const queryLatency = (payload) => {
-  if (USE_MOCK) return mockAggregate('service_name')
-  return aggregateLogs({
-    group_by: 'service_name',
-    log_types: ['application', 'web_server', 'performance'],
-    ...payload
-  })
-}
+/** 错误分布 / 错误量时间序列（传 interval 时返回时间直方图） */
+export const queryErrors = (payload) => queryByTemplate('errors', payload)
 
-/** 行为漏斗：按 event_type 聚合 behavior 类日志 */
-export const queryBehaviorFunnel = (payload) => {
-  if (USE_MOCK) return mockAggregate('event_type')
-  return aggregateLogs({
-    group_by: 'event_type',
-    log_types: ['behavior'],
-    ...payload
-  })
-}
+/** 耗时分位模板 */
+export const queryLatency = (payload) => queryByTemplate('latency', payload)
 
-/** 安全分布：security 类日志，按 event_type 聚合（通用 aggregate 无 risk_level 维度） */
-export const querySecurity = (payload) => {
-  if (USE_MOCK) return mockAggregate('event_type')
-  return aggregateLogs({
-    group_by: 'event_type',
-    log_types: ['security'],
-    ...payload
-  })
-}
+/** 行为漏斗模板 */
+export const queryBehaviorFunnel = (payload) => queryByTemplate('behavior_funnel', payload)
 
-/** 基础设施健康：infrastructure + performance，按 service_name 聚合 */
-export const queryInfraHealth = (payload) => {
-  if (USE_MOCK) return mockAggregate('service_name')
-  return aggregateLogs({
-    group_by: 'service_name',
-    log_types: ['infrastructure', 'performance'],
-    ...payload
-  })
-}
+/** 安全事件分布模板 */
+export const querySecurity = (payload) => queryByTemplate('security', payload)
+
+/** 基础设施健康模板 */
+export const queryInfraHealth = (payload) => queryByTemplate('infra_health', payload)
