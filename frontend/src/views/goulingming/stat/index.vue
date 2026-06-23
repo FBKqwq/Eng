@@ -18,6 +18,28 @@
       />
     </section>
 
+    <!-- 图表区 -->
+    <section class="stat-page__charts" aria-label="趋势图表">
+      <TrafficTrendChart
+        :categories="trafficCategories"
+        :series="trafficSeries"
+        :loading="chartsLoading"
+        title="请求量趋势"
+      />
+      <ErrorTrendChart
+        :categories="errorCategories"
+        :series="errorSeries"
+        :loading="chartsLoading"
+        title="错误率趋势"
+      />
+      <LatencyChart
+        :categories="latencyCategories"
+        :series="latencySeries"
+        :loading="chartsLoading"
+        title="延迟分布"
+      />
+    </section>
+
     <!-- 底部状态列表 -->
     <section class="stat-page__list" aria-label="各服务状态">
       <ServiceStatusList :items="serviceItems" :loading="loading" :last-updated="lastUpdated" />
@@ -39,12 +61,16 @@ import { ref, inject, onMounted, onUnmounted, watch } from 'vue'
 import StatCard from '../../../components/common/StatCard.vue'
 import EmptyState from '../../../components/common/EmptyState.vue'
 import ServiceStatusList from './components/ServiceStatusList.vue'
-import { getGoulingmingStats, getServiceStatus } from '../../../api/goulingming.js'
+import TrafficTrendChart from './components/TrafficTrendChart.vue'
+import ErrorTrendChart from './components/ErrorTrendChart.vue'
+import LatencyChart from './components/LatencyChart.vue'
+import { getGoulingmingStats, getServiceStatus, getTrafficTrend, getErrorTrend, getLatencyDistribution } from '../../../api/goulingming.js'
 import { formatTime } from '../../../utils/format.js'
 
 const range = inject('timeRange', { start: Date.now() - 3600_000, end: Date.now() })
 
 const loading = ref(false)
+const chartsLoading = ref(false)
 const fetchError = ref('')
 const kpiCards = ref([
   { label: '总请求量', value: null, hint: '最近 1 小时', delta: null, deltaDirection: '' },
@@ -53,6 +79,14 @@ const kpiCards = ref([
   { label: '活跃服务', value: null, hint: '在线节点', delta: null, deltaDirection: '' }
 ])
 const serviceItems = ref([])
+
+// 图表数据
+const trafficCategories = ref([])
+const trafficSeries = ref([])
+const errorCategories = ref([])
+const errorSeries = ref([])
+const latencyCategories = ref([])
+const latencySeries = ref([])
 
 /** 仅拉取 stats（含 KPI 指标），随 timeRange 联动 */
 async function fetchStats() {
@@ -117,6 +151,34 @@ async function pollServices() {
   }
 }
 
+async function fetchCharts() {
+  chartsLoading.value = true
+  const payload = { start_time: range.start, end_time: range.end }
+  try {
+    const [tr, er, ld] = await Promise.all([
+      getTrafficTrend(payload),
+      getErrorTrend(payload),
+      getLatencyDistribution(payload)
+    ])
+
+    const trData = tr.data ?? {}
+    trafficCategories.value = trData.categories ?? []
+    trafficSeries.value = trData.series ?? []
+
+    const erData = er.data ?? {}
+    errorCategories.value = erData.categories ?? []
+    errorSeries.value = erData.series ?? []
+
+    const ldData = ld.data ?? {}
+    latencyCategories.value = ldData.categories ?? []
+    latencySeries.value = ldData.series ?? []
+  } catch (e) {
+    console.warn('[goulingming/stat] fetch charts failed:', e.message)
+  } finally {
+    chartsLoading.value = false
+  }
+}
+
 const SERVICE_POLL_INTERVAL = 15_000 // 15 秒轮询服务状态
 let pollTimer = null
 const lastUpdated = ref('')
@@ -135,13 +197,14 @@ function stopPolling() {
 
 onMounted(() => {
   fetchStats()
+  fetchCharts()
   pollServices()
   startPolling()
 })
 
 onUnmounted(stopPolling)
 
-watch(range, fetchStats, { deep: true })
+watch(range, () => { fetchStats(); fetchCharts() }, { deep: true })
 </script>
 
 <style scoped>
@@ -170,6 +233,12 @@ watch(range, fetchStats, { deep: true })
 
 .stat-page__list {
   margin-top: var(--spacing-sm);
+}
+
+.stat-page__charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--spacing-md);
 }
 
 .stat-page__error {

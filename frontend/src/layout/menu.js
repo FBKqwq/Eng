@@ -23,6 +23,7 @@ export const menuTree = [
     icon: 'analysis',
     children: [
       { title: '异常诊断中心', path: '/analysis/diagnosis' },
+      { title: '分析轨迹', path: '/analysis/langgraph-history' },
       { title: '周期体检报告', path: '/analysis/reports' },
       { title: '预警中心', path: '/analysis/alerts' },
       { title: '调用链路追踪', path: '/analysis/trace' },

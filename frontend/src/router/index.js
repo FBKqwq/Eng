@@ -12,6 +12,7 @@ import AnalysisDiagnosis from '../views/analysis/diagnosis.vue'
 import AnalysisReports from '../views/analysis/reports.vue'
 import AnalysisAlerts from '../views/analysis/alerts.vue'
 import AnalysisTrace from '../views/analysis/trace.vue'
+import AnalysisLanggraphHistory from '../views/analysis/langgraph-history.vue'
 import AnalysisFunnel from '../views/analysis/funnel.vue'
 import SystemPipeline from '../views/system/pipeline.vue'
 import SystemComponents from '../views/system/components.vue'
@@ -97,6 +98,12 @@ const routes = [
         name: 'analysis-trace',
         component: AnalysisTrace,
         meta: { title: '调用链路追踪' }
+      },
+      {
+        path: 'analysis/langgraph-history',
+        name: 'analysis-langgraph-history',
+        component: AnalysisLanggraphHistory,
+        meta: { title: '分析轨迹' }
       },
       {
         path: 'analysis/funnel',
