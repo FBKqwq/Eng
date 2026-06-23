@@ -133,6 +133,7 @@ flowchart LR
 | F1-15 | F1-15-system_placeholder.md | `views/system/`(新3页)+`components/system/` | F1-06 |
 | F1-16 | F1-16-router.md | `router/index.js` | F1-12~15 |
 | F1-17 | F1-17-dev_docs.md | `frontend/DEV.md` | F1-01~16 |
+| F1-18 | F1-18-api_contract_retrofit.md | `api/*`+`analysis.js` | F1-03 |
 
 ---
 
@@ -208,7 +209,7 @@ F1-16 仅在 F1-12~15 均为「已完成」后派发；F1-17 仅在 F1-01~16 均
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-01**
+- 任务编号：**F1-01** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-01-design_tokens.md`
 - 编排说明：`location/frontend/job/task_m1/README.md`
 - 强制基线：`location/frontend/前端开发总体规划.md` §4
@@ -242,7 +243,7 @@ AC-01~AC-04（见任务文档）；引入后 `npm run build` 通过
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-02**
+- 任务编号：**F1-02** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-02-composables.md`
 
 ## STATUS.md
@@ -272,7 +273,7 @@ AC-01~AC-04（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-03**
+- 任务编号：**F1-03** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-03-api_wrappers.md`
 - 强制基线：`前端开发总体规划.md` §6 API 契约表
 
@@ -285,7 +286,9 @@ AC-01~AC-04（见任务文档）
 - 禁止修改：views/components/layout/composables/utils
 
 ## 开发要点
-- logs/diagnosis/system 走真实 request；metrics/reports/alerts 带 `USE_MOCK=true` 返回契约化空数据
+- 必读：`location/frontend/job/API_CONTRACT.md`、`backend/app/api/DEV.md` §4.2
+- logs/diagnosis/system 走真实 request；metrics/reports/alerts 带 `USE_MOCK` 且 mock 形态对齐 `data` 负载（items+total、buckets 等）
+- request.js 响应拦截器解包 `{ok,data,error}`；wrapper 不得再读 body.ok
 - 页面与组件不得直接 axios/fetch（本任务建立唯一通道）
 
 ## 验收标准
@@ -303,7 +306,7 @@ AC-01~AC-04（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-04**
+- 任务编号：**F1-04** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-04-utils.md`
 
 ## STATUS.md
@@ -332,7 +335,7 @@ AC-01~AC-04（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-05**
+- 任务编号：**F1-05** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-05-charts.md`
 
 ## STATUS.md
@@ -364,7 +367,7 @@ AC-01~AC-05（见任务文档）；`npm run build` 通过
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-06**
+- 任务编号：**F1-06** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-06-common_components.md`
 
 ## STATUS.md
@@ -396,7 +399,7 @@ AC-01~AC-04（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-07**
+- 任务编号：**F1-07** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-07-menu.md`
 
 ## STATUS.md
@@ -425,7 +428,7 @@ AC-01~AC-03（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-08**
+- 任务编号：**F1-08** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-08-sidebar_tree.md`
 
 ## STATUS.md
@@ -454,7 +457,7 @@ AC-01~AC-04（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-09**
+- 任务编号：**F1-09** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-09-topbar.md`
 
 ## STATUS.md
@@ -483,7 +486,7 @@ AC-01~AC-04（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-10**
+- 任务编号：**F1-10** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-10-pipeline_health_dot.md`
 
 ## STATUS.md
@@ -512,7 +515,7 @@ AC-01~AC-04（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-11**
+- 任务编号：**F1-11** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-11-layout_shell.md`
 
 ## STATUS.md
@@ -541,7 +544,7 @@ AC-01~AC-04（见任务文档）；`npm run build` 通过
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-12**
+- 任务编号：**F1-12** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-12-dashboard_placeholder.md`
 
 ## STATUS.md
@@ -573,7 +576,7 @@ AC-01~AC-03（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-13**
+- 任务编号：**F1-13** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-13-monitor_placeholder.md`
 
 ## STATUS.md
@@ -605,7 +608,7 @@ AC-01~AC-03（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-14**
+- 任务编号：**F1-14** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-14-analysis_placeholder.md`
 - 强制基线：`前端开发总体规划.md` §5 智能体耦合规范
 
@@ -638,7 +641,7 @@ AC-01~AC-03（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-15**
+- 任务编号：**F1-15** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-15-system_placeholder.md`
 
 ## STATUS.md
@@ -670,7 +673,7 @@ AC-01~AC-03（见任务文档）
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-16**
+- 任务编号：**F1-16** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-16-router.md`
 
 ## STATUS.md
@@ -702,7 +705,7 @@ AC-01~AC-05（见任务文档）；`npm run build` 通过
 /elk-frontend-agent
 
 ## 任务标识
-- 任务编号：**F1-17**
+- 任务编号：**F1-17** (作为会话窗口名称)
 - 任务文档：`location/frontend/job/task_m1/F1-17-dev_docs.md`
 
 ## STATUS.md
@@ -729,6 +732,36 @@ AC-01~AC-04（见任务文档）；git diff 仅 DEV.md
 
 ---
 
+### F1-18：api_contract_retrofit（F1 收尾 | 优先于 F2/F4/F6 真实对接）
+
+```markdown
+/elk-frontend-agent
+
+## 任务标识
+- 任务编号：**F1-18** (作为会话窗口名称)
+- 任务文档：`location/frontend/job/task_m1/F1-18-api_contract_retrofit.md`
+- 契约基线：`location/frontend/job/API_CONTRACT.md`、`backend/app/api/DEV.md` §4.2
+
+## STATUS.md
+- 开工前：F1-03 = `已完成`；F1-18 行改 `进行中`
+- 完成后：F1-18 行改 `已完成`；F1-03 备注「已由 F1-18 契约复审」
+
+## 文件边界（强制）
+- 唯一允许修改：`src/api/request.js`（验收）、`logs.js`、`metrics.js`、`diagnosis.js`、`reports.js`、`alerts.js`、`system.js`、新建 `analysis.js`
+- 禁止修改：views/components/layout/composables
+
+## 开发要点
+- request 已解包信封：wrapper 不读 body.ok；页面读 res.data 即业务负载
+- 删除 /metrics/*、/logs/trace；新增 aggregateLogs、searchByTraceId、analysis.js
+- mock 形态：alerts/reports 用 items+total；aggregate 用 buckets
+- 详见 F1-18 任务文档 AC-01~06
+
+## 完成标准
+- git diff 仅 api 目录；npm run build 通过；更新 STATUS
+```
+
+---
+
 ## 四、推荐派发时间线（示例）
 
 | 时间点 | 派发任务 | Agent 数 |
@@ -739,6 +772,6 @@ AC-01~AC-04（见任务文档）；git diff 仅 DEV.md
 | T3（F1-08/09/10 完成后） | F1-11 | 1 |
 | T4（F1-05/06 完成后） | F1-12 + F1-13 + F1-14 + F1-15 | 4 |
 | T5（F1-12~15 完成后） | F1-16 | 1 |
-| T6（全部完成） | F1-17 | 1 |
+| T6（全部完成） | F1-17 + F1-18 | 2 |
 
 **最短关键路径**：F1-01 → F1-06 → F1-12/13/14/15 → F1-16 → F1-17；并行可显著缩短日历时间。

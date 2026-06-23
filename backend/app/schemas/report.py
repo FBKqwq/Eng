@@ -33,18 +33,13 @@ class ReportListItem(BaseModel):
   task_id: Optional[str] = None
 
 
-class ReportDetailResponse(BaseModel):
-  ok: bool = False
-  placeholder: bool = True
-  message: str = "报告详情接口尚未实现"
-  report_id: str
-  report: Optional[dict[str, Any]] = None
-
-
-class ReportListResponse(BaseModel):
-  ok: bool = False
-  placeholder: bool = True
-  message: str = "报告列表接口尚未实现"
+# 统一信封 data 负载模型
+class ReportListData(BaseModel):
   items: List[ReportListItem] = Field(default_factory=list)
   total: int = 0
   limit: int = 20
+
+
+class ReportDetailData(BaseModel):
+  report_id: str
+  report: Optional[dict[str, Any]] = None

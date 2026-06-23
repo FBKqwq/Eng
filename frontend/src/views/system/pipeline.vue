@@ -1,9 +1,7 @@
 <template>
   <div class="pipeline-page">
     <PipelineGraph />
-    <section class="page-section" style="margin-top: 16px;">
-      <VerifyOutputPanel />
-    </section>
+    <VerifyOutputPanel />
   </div>
 </template>
 
@@ -11,3 +9,11 @@
 import PipelineGraph from '../../components/system/PipelineGraph.vue'
 import VerifyOutputPanel from '../../components/system/VerifyOutputPanel.vue'
 </script>
+
+<style scoped>
+.pipeline-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+</style>

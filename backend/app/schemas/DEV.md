@@ -32,7 +32,7 @@
 ## 6. 模块状态表
 | 模块名称 | 当前状态 | 最近修改时间 | 最近修改人/agent | 风险等级 | 备注 |
 |---|---|---|---|---|---|
-| Schemas | M1/M4/M5 契约已对齐 API | 2026-06-22 | elk-backend-agent | 低 | report/alert 已由占位转为真实对接 |
+| Schemas | M1/M4/M5/M6 契约已对齐 API；新增统一响应信封 | 2026-06-23 | elk-backend-agent | 低 | 新增 `response.py`（`ApiResponse[T]`/`ErrorInfo`/`ApiCode`）；各域新增 data 负载模型，旧 `*Response`(placeholder) 已移除 |
 
 ## 7. 禁止重复实现清单
 | 能力 | 正确位置 | 禁止行为 |
@@ -43,7 +43,7 @@
 ## 8. 真实实现与设计愿景差异
 | 方向 | 设计愿景 | 当前状态 | 后续动作 |
 |---|---|---|---|
-| 统一数据契约 | 所有接口均有清晰 schema 与错误结构 | 目前仅覆盖部分领域 | 逐步补齐并收敛到统一基类 |
+| 统一数据契约 | 所有接口均有清晰 schema 与错误结构 | 已收敛到统一基类 `ApiResponse[T]`，业务负载用各域 `*Data` 模型 | 新增接口沿用同一信封即可 |
 
 ## 9. 开发日志区
 | 时间 | 修改内容 | 涉及文件 | 当前结果 | 遗留问题 |
@@ -55,6 +55,7 @@
 | 2026-05-19 | 补齐 Nginx Web Server 日志契约 | `app/schemas/log.py` | 新增 `LogType.web_server`、`WebServerLog`、Nginx log kind / upstream cache / scheme 等枚举，Pydantic 实例化验证通过 | 后续需在 simulation 生成器中实际产出该类日志 |
 | 2026-06-16 | 新增 report/alert schema | `schemas/report.py`、`schemas/alert.py` | 列表/详情/确认响应模型就位 | 已由 M4/M5 API 对接 |
 | 2026-06-22 | 同步 Schemas DEV 至 M5 现状 | `app/schemas/DEV.md` | report/alert 去占位标注；状态表更新 | P0 统一响应基类仍待办 |
+| 2026-06-23 | **P0 落地：统一响应信封基类** | 新增 `app/schemas/response.py`；`schemas/log.py` 增 `LogSearchData`/`LogSearchItem`/`LogFieldsData`/`LogAggregateData`；`schemas/report.py` 增 `ReportListData`/`ReportDetailData`（删 `ReportListResponse`/`ReportDetailResponse`）；`schemas/alert.py` 增 `AlertListData`/`AlertAckData`（删 `AlertListResponse`/`AlertAckResponse`）；`schemas/diagnosis.py` 增 `DiagnosisFacadeData` | 全接口统一 `ApiResponse[T]={ok,data,error}`，`ApiCode` 集中错误码；data 模型对真实 service 输出宽松对齐（`extra=allow`、`status:Any`）避免强类型校验破坏真实返回 | 含动态结构的 data（report/diagnosis）保留 `dict[str,Any]`，未逐字段强约束 |
 
 ## 2026-05-13 补充：System / Docker 状态响应 Schema
 

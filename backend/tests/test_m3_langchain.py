@@ -180,8 +180,10 @@ def test_parse_with_retry_code_block_wrapped() -> None:
     assert result["data"]["confidence"] == 0.7
 
 
-def test_parse_with_retry_invalid_text() -> None:
+def test_parse_with_retry_invalid_text(monkeypatch: pytest.MonkeyPatch) -> None:
     """非法文本解析失败并返回错误信息。"""
+    # 全程 mock LLM：关闭可选的 json_repair 修复路径，使断言不受环境中真实 API Key 影响。
+    monkeypatch.setattr(llm_manager, "get_llm", lambda *a, **k: None)
     result = parse_with_retry("这不是 JSON，也没有结构化内容", ReportChainOutput)
 
     assert result["ok"] is False

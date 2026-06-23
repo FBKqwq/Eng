@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any
 
@@ -565,7 +565,7 @@ def _build_scheduled_alert_candidate(
         "title": report.get("title") or "周期体检高风险预警",
         "affected_service": affected,
         "description": report.get("summary") or "周期分析检测到高风险",
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "payload": {
             "task_id": state.get("task_id"),
             "risk_level": report.get("risk_level"),

@@ -1,7 +1,7 @@
 <template>
   <EmptyState
     title="动态筛选器占位"
-    description="字段来自 GET /logs/fields?log_type=xxx 动态渲染，接口未就绪前使用本地兜底"
+    description="字段目录 GET /logs/fields（M1 已落地，F2 接入）"
     :pending-api="`GET /api/v1/logs/fields?log_type=${logType}`"
     compact
   />

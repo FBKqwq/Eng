@@ -533,9 +533,10 @@ def test_analysis_api_runs_recent(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
-    assert body["total"] == 1
-    assert len(body["items"]) == 1
-    item = body["items"][0]
+    data = body["data"]
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    item = data["items"][0]
     assert item["report_id"] == "rpt-api-001"
     assert item["node_count"] == 2
     assert item["total_duration_ms"] == 7
@@ -576,8 +577,9 @@ def test_analysis_api_run_manual_trigger(monkeypatch: pytest.MonkeyPatch) -> Non
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
-    assert body["report_id"] == "rpt-manual-001"
-    assert body["alert_id"] == "alert-manual-001"
-    assert len(body["node_trace"]) == 2
-    assert body["alert_decision"]["should_alert"] is True
+    data = body["data"]
+    assert data["report_id"] == "rpt-manual-001"
+    assert data["alert_id"] == "alert-manual-001"
+    assert len(data["node_trace"]) == 2
+    assert data["alert_decision"]["should_alert"] is True
     _assert_no_placeholder(body)

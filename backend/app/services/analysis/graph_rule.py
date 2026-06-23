@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import time
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from typing import Any
 
@@ -80,7 +80,7 @@ def run_rule_subgraph(trigger_event: dict[str, Any]) -> dict[str, Any]:
                 {
                     "node_name": "normalize_trigger",
                     "message": error_msg,
-                    "recorded_at": datetime.now().isoformat(),
+                    "recorded_at": datetime.now(timezone.utc).isoformat(),
                 }
             ],
         }
@@ -590,7 +590,7 @@ def _node_generate_event_report(state: AnalysisState) -> dict[str, Any]:
 
 def _derive_context_window(event: dict[str, Any]) -> dict[str, str]:
     """以触发事件时间为中心推导上下文查询窗口。"""
-    anchor = _parse_iso_datetime(event.get("timestamp")) or datetime.now()
+    anchor = _parse_iso_datetime(event.get("timestamp")) or datetime.now(timezone.utc)
     start = anchor - timedelta(minutes=_CONTEXT_WINDOW_BEFORE_MINUTES)
     end = anchor + timedelta(minutes=_CONTEXT_WINDOW_AFTER_MINUTES)
     return {"start": start.isoformat(), "end": end.isoformat()}
@@ -636,7 +636,7 @@ def _resolve_event_timestamp(event: dict[str, Any]) -> str:
         return ts.strip()
     if isinstance(ts, datetime):
         return ts.isoformat()
-    return datetime.now().isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _normalize_trigger_log(event: dict[str, Any]) -> dict[str, Any]:

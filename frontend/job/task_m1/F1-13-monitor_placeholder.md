@@ -39,8 +39,8 @@ props：`logType`、`chartTemplates`、`defaultColumns`。
 
 | 组件 | 占位形式 |
 | --- | --- |
-| `DynamicFilterBar` | `EmptyState`，标注「待后端字段目录接口 `GET /logs/fields`」 |
-| `ChartBand` | 无模板时 `EmptyState`，`pending-api="metrics 六类聚合接口"` |
+| `DynamicFilterBar` | `EmptyState`，标注「字段目录 `GET /logs/fields`（M1 已落地，F2 接入）」 |
+| `ChartBand` | 无模板时 `EmptyState`，`pending-api="POST /logs/aggregate（metrics.js 六模板）"` |
 
 ### 3. 7 个子页 view
 

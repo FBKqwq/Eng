@@ -42,6 +42,7 @@
 | F1-15 | F1-06 = `已完成`/`已合并` |
 | F1-16 | F1-12 ~ F1-15 均为 `已完成`/`已合并` |
 | F1-17 | F1-01 ~ F1-16 均为 `已完成`/`已合并` |
+| F1-18 | F1-03 = `已完成`/`已合并`（可与 F1-17 并行，但改 api 文件） |
 
 ---
 
@@ -56,23 +57,24 @@
 
 | 任务 | 负责文件/目录 | 状态 | 负责人/Agent | 完成时间 | 分支/PR | 验收摘要 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| F1-01 | `assets/styles/index.css` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | 设计令牌/语义色/栅格工具类就位，构建通过 | 追溯补录 |
+| F1-01 | `assets/styles/index.css` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04 通过：令牌齐全、语义色四色、栅格工具类、build OK | F1-01 设计令牌复审 |
 | F1-02 | `composables/useTimeRange.js`+`usePolling.js` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | provideTimeRange/useTimeRange + usePolling 就位 | 追溯补录 |
-| F1-03 | `api/*.js`（7 个） | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | logs/diagnosis/system 真实；metrics/reports/alerts 带 USE_MOCK=true | 待后端就绪后关 mock（F4/F6） |
-| F1-04 | `utils/format.js`+`logTypeMeta.js` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | format 工具 + 7 类 logTypeMeta + getLogTypeMeta | 追溯补录 |
-| F1-05 | `components/common/charts/*` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | BaseChart + Gauge/Trend/Bar/Pie/Funnel，仅 BaseChart import echarts | 追溯补录 |
-| F1-06 | `components/common/*`（非 charts） | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | EmptyState/StatCard/StatusCard/SeverityBadge/LogTable/TimeAxis/StageRing | LogTable 占位，真实表格 F2 |
-| F1-07 | `layout/menu.js` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | menuTree 1+3 分组（7+5+3 叶子），path 对齐路由 | 追溯补录 |
-| F1-08 | `SidebarTree.vue`+`SidebarTreeNode.vue` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | 递归树渲染、高亮、自动展开、可折叠 | 追溯补录 |
-| F1-09 | `TopBar.vue` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | meta.title + 时间范围选择器 + 预警角标 30s 轮询 | 追溯补录 |
-| F1-10 | `PipelineHealthDot.vue` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | getSystemStatus 60s 轮询，四态着色，跳转 /system/pipeline | 追溯补录 |
-| F1-11 | `layout/index.vue` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | aside+main 双栏，组合树/顶栏/健康点，provideTimeRange | 追溯补录 |
-| F1-12 | `views/dashboard/`+`components/dashboard/` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | 5 区块编排，占位区用 EmptyState+pending-api | 真实数据 F4/F6 |
-| F1-13 | `views/monitor/`(7)+`components/monitor/` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | LogMonitorShell 三段式，7 子页配置驱动占位 | 真实查询 F2、图表 F4 |
-| F1-14 | `views/analysis/`(5)+`components/analysis-*/` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | 诊断/报告/预警/链路/漏斗占位，符合智能体耦合规范 | 真实可视化 F5/F6/F7 |
-| F1-15 | `views/system/`(新3)+`components/system/` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | pipeline/components/config 占位；旧 system/index.vue 保留 | 能力迁移 F3 |
-| F1-16 | `router/index.js` | 已完成 | elk-frontend-agent（追溯） | 2026-06-22 | 工作区 | 16 路由 + meta.title + 5 旧路由重定向 + /temp/developer | 追溯补录 |
-| F1-17 | `frontend/DEV.md` | 进行中 | — | — | — | DEV.md 仍描述旧 5 路由，需更新为新路由/目录/约束基线 | **唯一未收尾项** |
+| F1-03 | `api/*.js`（7 个） | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04 通过：信封解包、logs/diagnosis/system 真实路径、metrics/reports/alerts USE_MOCK 契约形态、build 通过 | 已由 F1-18 契约复审 |
+| F1-04 | `utils/format.js`+`logTypeMeta.js` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04：formatTime/Bytes/Percent/Duration 边界安全；7 类 logTypeMeta + getLogTypeMeta + §3.2 默认列对齐 | F1-13 可依赖 |
+| F1-05 | `components/common/charts/*` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-05 通过：BaseChart resize/dispose/动效；5 图表 data→option 组装；仅 BaseChart import echarts；build OK | F1-05 charts 实现 |
+| F1-06 | `components/common/*`（非 charts） | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04 通过：EmptyState 四 props、SeverityBadge 语义色令牌、LogTable 占位、7 组件 build OK | LogTable 占位，真实表格 F2 |
+| F1-07 | `layout/menu.js` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-03 通过：1 一级叶子 + 3 分组（7+5+3 叶子），16 path 与 README §2.1 / router 一致，纯声明数据 | F1-08 可依赖 |
+| F1-08 | `SidebarTree.vue`+`SidebarTreeNode.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04 通过：menuTree 两级递归渲染、叶子高亮、父分组路由自动展开、分组可折叠；build OK | F1-11 可依赖 |
+| F1-09 | `TopBar.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04 通过：meta.title 标题、useTimeRange 预设联动、getActiveAlerts 30s usePolling 角标跳转 /analysis/alerts、失败归 0 不抛错 | F1-11 可依赖 |
+| F1-10 | `PipelineHealthDot.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04 通过：getSystemStatus 60s usePolling、嵌套字段四态映射、点击跳 /system/pipeline、失败灰态不抛错；build OK | F1-11 可依赖 |
+| F1-11 | `layout/index.vue` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04 通过：aside+content 双栏、品牌/树/健康点/TopBar/router-view 组合挂载、provideTimeRange、导航区可滚动、build OK | F1-16 可依赖 |
+| F1-12 | `views/dashboard/`+`components/dashboard/` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-03 通过：5 区块 §3.1 编排；EmptyState+pending-api；图表空 TrendChart 占位；build OK | 真实数据 F4/F6 |
+| F1-13 | `views/monitor/`(7)+`components/monitor/` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-03 通过：LogMonitorShell 三段式骨架、7 子页 getLogTypeMeta 配置驱动、筛选/图表 EmptyState+pending 标注、build OK | 真实查询 F2、图表 F4 |
+| F1-14 | `views/analysis/`(5)+`components/analysis-*/` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-03 通过：5 页 §3.3~§3.7 分区编排；Gauge/StageRing/EmptyState 占位；无对话框形态；build OK | 真实可视化 F5/F6/F7 |
+| F1-15 | `views/system/`(新3)+`components/system/` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-03 通过：§3.8 编排 pipeline/components/config 占位；四节点链路图/验证面板/6 状态卡/配置快照；旧 index.vue 保留；build OK | 能力迁移 F3 |
+| F1-16 | `router/index.js` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-05 通过：16 子路由+meta.title 与 menu.js 一致、5 条旧路由重定向、/temp/developer 可达、build OK（735 modules） | F1-17 可依赖 |
+| F1-17 | `frontend/DEV.md` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-04 通过：新 16 路由表、目录职责、F1 状态表、约束与开发日志已收敛 | F1 文档收尾完成 |
+| F1-18 | `api/*`+`analysis.js` | 已完成 | elk-frontend-agent | 2026-06-23 | 工作区 | AC-01~AC-06 通过：信封解包验收、logs aggregate/searchByTraceId、metrics 六模板→aggregateLogs、mock items+total/buckets、analysis.js 两函数、build OK（735 modules） | F1 契约收口完成 |
 
 ---
 
@@ -80,10 +82,10 @@
 
 | 可派发任务 | 原因 |
 | --- | --- |
-| F1-17 | F1-01~F1-16 均为 `已完成`；DEV.md 尚未与新路由/目录对齐，需收敛 |
+| F2-01 / F2-02 / F3-01 等 | F1-18 已完成；可并行进入 F2/F3 真实对接 |
 
-> F1-01~F1-16 已落地（追溯补录）；F1 仅剩 **F1-17 DEV 文档收敛** 未完成。
-> 收尾后即可进入 F2（监控线）/F3（系统线）并行阶段，详见总体规划 §7。
+> **F1 里程碑收尾（2026-06-23）**：F1-01~F1-18 已全部落地——骨架、布局、16 路由、通用件、图表封装、API wrapper（含 analysis.js）与页面占位均已验收；`npm run build` 通过。
+> 下一步进入 F2/F3 并行真实对接，详见总体规划 §7。
 
 ---
 
@@ -109,4 +111,5 @@
 
 | 时间 | 操作人/Agent | 说明 |
 | --- | --- | --- |
-| 2026-06-22 | 初始化 | 创建 F1 任务规划（README/PROMPT_DISPATCH/STATUS + F1-01~17）；据现有 `src/` 落地追溯补录 F1-01~16 为 `已完成`；F1-17 待收尾 |
+| 2026-06-23 | API 契约审计 | 新增 API_CONTRACT/API_AUDIT、F1-18；修订 F1~F7 api 相关任务文档 |
+| 2026-06-23 | F1-17 DEV 文档收敛 | `frontend/DEV.md` 路由/目录/状态表与 F1 落地对齐；F1 里程碑文档收尾 |

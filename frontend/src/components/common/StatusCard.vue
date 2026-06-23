@@ -13,6 +13,7 @@
 defineProps({
   title: { type: String, required: true },
   statusLabel: { type: String, default: '未知' },
+  /** success | warning | danger | neutral */
   tone: { type: String, default: 'neutral' },
   description: { type: String, default: '' }
 })
@@ -20,33 +21,59 @@ defineProps({
 
 <style scoped>
 .status-card {
-  padding: 16px;
+  padding: var(--spacing-md);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
 }
+
 .status-card header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
+
 .status-card h3 {
   margin: 0;
   font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
 }
+
 .badge {
+  flex-shrink: 0;
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 12px;
-  background: var(--color-bg);
+  font-weight: 600;
 }
-.tone-success .badge { background: var(--color-success-bg); color: var(--color-success); }
-.tone-warning .badge { background: var(--color-warning-bg); color: var(--color-warning); }
-.tone-danger .badge { background: var(--color-danger-bg); color: var(--color-danger); }
+
+.tone-neutral .badge {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+}
+
+.tone-success .badge {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.tone-warning .badge {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.tone-danger .badge {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
 .desc {
   margin: 10px 0 0;
   font-size: 13px;
   color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 </style>

@@ -32,9 +32,10 @@ src/layout/components/TopBar.vue
 
 ### 3. 活跃预警角标
 
-- 轮询 `getActiveAlerts()`（30s，建议用 `usePolling`），数量 > 0 时红点提示。
-- 点击跳转 `/analysis/alerts`。
-- 请求失败时角标归 0，不抛错。
+- 轮询 `getActiveAlerts()`（30s，建议用 `usePolling`）。
+- 解包后计数：`const d = res.data; alertCount = d?.total ?? d?.items?.length ?? 0`（**禁止**假设 `data` 为顶层数组）。
+- 数量 > 0 时红点；点击跳转 `/analysis/alerts`。
+- 请求失败（含 `e.error?.code`）时角标归 0，不抛错。
 
 ### 4. 约束
 

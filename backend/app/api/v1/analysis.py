@@ -11,6 +11,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.response import ApiCode, ApiResponse, error_envelope, ok_envelope
 from app.services.analysis.graph_main import run_main_graph
 from app.services.report.report_service import get_report, list_recent_reports
 
@@ -54,17 +55,14 @@ class AnalysisRunItem(BaseModel):
   total_duration_ms: int = 0
 
 
-class AnalysisRunsRecentResponse(BaseModel):
-  ok: bool
-  message: str = ""
+# 统一信封 data 负载模型
+class AnalysisRunsData(BaseModel):
   items: list[AnalysisRunItem] = Field(default_factory=list)
   total: int = 0
   limit: int = 20
 
 
-class AnalysisRunResponse(BaseModel):
-  ok: bool
-  message: str = ""
+class AnalysisRunData(BaseModel):
   report_id: str | None = None
   alert_id: str | None = None
   node_trace: list[dict[str, Any]] = Field(default_factory=list)
@@ -110,18 +108,15 @@ def _build_run_item(list_item: dict[str, Any], full_report: dict[str, Any] | Non
   )
 
 
-@router.get("/runs/recent", response_model=AnalysisRunsRecentResponse)
-def recent_analysis_runs(limit: int = Query(default=20, ge=1, le=100)) -> dict:
+@router.get("/runs/recent", response_model=ApiResponse[AnalysisRunsData])
+def recent_analysis_runs(limit: int = Query(default=20, ge=1, le=100)) -> ApiResponse[AnalysisRunsData]:
   """返回近期图执行 node_trace 摘要，供前端展示节点耗时与产出。"""
   result = list_recent_reports(limit=limit)
   if not result.get("ok"):
-    return AnalysisRunsRecentResponse(
-      ok=False,
-      message=result.get("error") or result.get("message") or "list_recent_reports failed",
-      items=[],
-      total=0,
-      limit=result.get("limit", limit),
-    ).model_dump()
+    return error_envelope(
+      ApiCode.QUERY_FAILED,
+      result.get("error") or result.get("message") or "list_recent_reports failed",
+    )
 
   items: list[AnalysisRunItem] = []
   for list_item in result.get("items") or []:
@@ -135,16 +130,17 @@ def recent_analysis_runs(limit: int = Query(default=20, ge=1, le=100)) -> dict:
         full_report = detail["report"]
     items.append(_build_run_item(list_item, full_report))
 
-  return AnalysisRunsRecentResponse(
-    ok=True,
-    items=items,
-    total=int(result.get("total") or 0),
-    limit=int(result.get("limit") or limit),
-  ).model_dump()
+  return ok_envelope(
+    AnalysisRunsData(
+      items=items,
+      total=int(result.get("total") or 0),
+      limit=int(result.get("limit") or limit),
+    )
+  )
 
 
-@router.post("/run", response_model=AnalysisRunResponse)
-def run_analysis(payload: AnalysisRunRequest) -> dict:
+@router.post("/run", response_model=ApiResponse[AnalysisRunData])
+def run_analysis(payload: AnalysisRunRequest) -> ApiResponse[AnalysisRunData]:
   """手动触发主图执行，返回 node_trace 与 report_id/alert_id。"""
   kwargs: dict[str, Any] = {}
   if payload.trigger_event:
@@ -153,12 +149,13 @@ def run_analysis(payload: AnalysisRunRequest) -> dict:
     kwargs["time_window"] = payload.time_window
 
   result = run_main_graph(payload.trigger_type, **kwargs)
-  return AnalysisRunResponse(
-    ok=bool(result.get("ok")),
-    message="",
+  data = AnalysisRunData(
     report_id=result.get("report_id"),
     alert_id=result.get("alert_id"),
     node_trace=list(result.get("node_trace") or []),
     alert_decision=dict(result.get("alert_decision") or {}),
     errors=list(result.get("errors") or []),
-  ).model_dump()
+  )
+  if not result.get("ok"):
+    return error_envelope(ApiCode.GRAPH_FAILED, "main graph execution failed", data=data)
+  return ok_envelope(data)

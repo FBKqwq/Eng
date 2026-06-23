@@ -21,6 +21,9 @@ ES_QUERY_TIMEOUT_SECONDS = 2
 MAX_TOP_N = 50
 MAX_WINDOW_HOURS = 24
 _NUMERIC_TERMS_FIELDS = frozenset({"status_code"})
+# 索引模板中以 text + keyword 多字段方式映射的字段（见 index_service._text_with_keyword）。
+# 仅这些字段做 terms 聚合时需要 .keyword 子字段；其余枚举字段本身即 keyword，直接聚合。
+_TEXT_MULTIFIELD_TERMS = frozenset({"message", "reason", "change_summary"})
 
 
 def aggregate(request: LogAggregateRequest) -> dict[str, Any]:
@@ -436,9 +439,17 @@ def _resolve_search_index(log_types: list[str] | None) -> str:
 
 
 def _terms_field(field: str) -> str:
-    if field in _NUMERIC_TERMS_FIELDS or field.endswith(".keyword"):
+    """解析 terms 聚合的实际字段名。
+
+    索引模板将绝大多数枚举字段直接映射为 keyword（无 .keyword 子字段），
+    只有少数自由文本字段（message/reason/change_summary）才是 text + keyword 多字段。
+    因此默认原样返回字段名，仅对多字段文本补 .keyword，避免聚合静默命中不存在的字段。
+    """
+    if field.endswith(".keyword") or field in _NUMERIC_TERMS_FIELDS:
         return field
-    return f"{field}.keyword"
+    if field in _TEXT_MULTIFIELD_TERMS:
+        return f"{field}.keyword"
+    return field
 
 
 def _validate_time_window(start_time: datetime, end_time: datetime) -> str | None:

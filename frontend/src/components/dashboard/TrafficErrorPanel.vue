@@ -1,6 +1,7 @@
 <template>
   <section class="page-section">
-    <TrendChart />
+    <h2>流量与错误</h2>
+    <TrendChart placeholder="流量趋势占位：请求量面积折线 + 错误量柱状叠加（application + web_server）" />
   </section>
 </template>
 

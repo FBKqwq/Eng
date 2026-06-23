@@ -24,8 +24,8 @@ defineProps({
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 32px 24px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg) var(--spacing-md);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);

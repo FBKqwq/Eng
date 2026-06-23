@@ -6,7 +6,7 @@
         <span>{{ emptyText }}</span>
       </slot>
     </div>
-    <div ref="chartRef" class="chart-canvas" />
+    <div ref="chartRef" class="chart-canvas" :class="{ 'chart-canvas--hidden': loading || isEmpty }" />
   </div>
 </template>
 
@@ -47,30 +47,43 @@ let chartInstance = null
 
 const isEmpty = computed(() => !props.option || Object.keys(props.option).length === 0)
 
+/** 合并动效默认项，供数据刷新时平滑过渡 */
+function withAnimationDefaults(option) {
+  return {
+    animation: true,
+    animationDuration: 500,
+    animationDurationUpdate: 500,
+    ...option
+  }
+}
+
 function initChart() {
-  if (!chartRef.value || isEmpty.value) return
+  if (!chartRef.value || props.loading || isEmpty.value) return
   if (!chartInstance) {
     chartInstance = echarts.init(chartRef.value)
   }
-  chartInstance.setOption(props.option, true)
+  chartInstance.setOption(withAnimationDefaults(props.option), { notMerge: false })
+}
+
+function clearChart() {
+  chartInstance?.clear()
 }
 
 function handleResize() {
   chartInstance?.resize()
 }
 
-watch(
-  () => props.option,
-  async () => {
-    await nextTick()
-    if (isEmpty.value) {
-      chartInstance?.clear()
-      return
-    }
-    initChart()
-  },
-  { deep: true }
-)
+async function refreshChart() {
+  await nextTick()
+  if (props.loading || isEmpty.value) {
+    clearChart()
+    return
+  }
+  initChart()
+}
+
+watch(() => props.option, refreshChart, { deep: true })
+watch(() => props.loading, refreshChart)
 
 onMounted(() => {
   initChart()
@@ -92,6 +105,9 @@ onBeforeUnmount(() => {
 .chart-canvas {
   width: 100%;
   height: 100%;
+}
+.chart-canvas--hidden {
+  visibility: hidden;
 }
 .chart-overlay {
   position: absolute;

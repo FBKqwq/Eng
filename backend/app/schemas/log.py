@@ -548,3 +548,54 @@ class LogContextResponse(BaseModel):
     related_error_codes: List[str] = Field(default_factory=list)
     time_range_start: Optional[datetime] = None
     time_range_end: Optional[datetime] = None
+
+
+# =========================
+# 统一信封 data 负载模型（API 层使用，宽松对齐 service 真实输出）
+# =========================
+
+class LogSearchItem(BaseModel):
+    """日志列表项；`payload` 为原始完整文档，`status` 兼容字符串/数值。"""
+
+    model_config = ConfigDict(extra="allow")
+
+    log_id: str = ""
+    timestamp: Optional[datetime] = None
+    log_level: Optional[str] = None
+    log_type: Optional[str] = None
+    event_type: Optional[str] = None
+    service_name: Optional[str] = None
+    message: Optional[str] = None
+    trace_id: Optional[str] = None
+    request_id: Optional[str] = None
+    user_id: Optional[str] = None
+    status: Optional[Any] = None
+    summary: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LogSearchData(BaseModel):
+    items: List[LogSearchItem] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    page_size: int = 20
+    has_more: bool = False
+    took_ms: Optional[int] = None
+
+
+class LogFieldsData(BaseModel):
+    """`/logs/fields`：不带 log_type 返回已注册类型；带 log_type 返回字段目录。"""
+
+    model_config = ConfigDict(extra="allow")
+
+    log_type: Optional[str] = None
+    catalog: Optional[Dict[str, Any]] = None
+    registered_log_types: Optional[List[str]] = None
+
+
+class LogAggregateData(BaseModel):
+    group_by: str
+    interval: Optional[str] = None
+    buckets: List[Dict[str, Any]] = Field(default_factory=list)
+    took_ms: Optional[int] = None
+    extra: Optional[Dict[str, Any]] = None

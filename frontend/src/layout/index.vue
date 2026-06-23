@@ -5,7 +5,9 @@
         <h2>日志分析系统</h2>
         <p>ELK + Kafka + LangGraph</p>
       </div>
-      <SidebarTree />
+      <nav class="sidebar-nav" aria-label="主导航">
+        <SidebarTree />
+      </nav>
       <PipelineHealthDot />
     </aside>
     <div class="content">
@@ -53,6 +55,11 @@ provideTimeRange()
   margin: 4px 0 0;
   font-size: 11px;
   color: var(--color-sidebar-text-muted);
+}
+.sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .content {
   flex: 1;

@@ -92,7 +92,7 @@
 | cluster_status.py | 稳定可用 | 2026-05-13 | elk-backend-agent | 低 | `/system/status` 可展示 cluster 快照 |
 | field_catalog.py | 拆索引已对齐 | 2026-06-16 | elk-backend-agent | 低 | web_server 索引 segment 保留下划线 |
 | index_service.py | M1 已完成 | 2026-06-16 | elk-backend-agent (M1-02) | 低 | 模板 pattern `app-logs-{log_type}-*` |
-| aggregation_service.py | 拆索引已对齐 | 2026-06-16 | elk-backend-agent | 低 | 已移除单索引回退；查询走拆分 pattern |
+| aggregation_service.py | 真实 ES 端到端验证通过 | 2026-06-23 | elk-backend-agent (e2e) | 低 | 修复 `_terms_field` 误加 `.keyword`；terms 聚合对真实 ES 返回正常 |
 | context_service.py | M1 已完成 | 2026-06-16 | elk-backend-agent (M1-05) | 低 | 四上下文函数；未指定 type 仍查 `app-logs-*` |
 
 ## 7. 禁止重复实现清单
@@ -125,3 +125,4 @@
 | 2026-05-18 | 日志查询升级为真实 ES search | `log_query_service.py` | bool 查询、分页、结果转换 | 需 ELK 容器联调验证 |
 | 2026-06-16 | M1 四模块真实 ES 实现 | `field_catalog.py` 等 | AC 全通过 | — |
 | 2026-06-16 | **拆索引链路对齐**：Logstash 按 log_type 写入拆分索引；`field_catalog` 统一 web_server 索引 segment（下划线）；`aggregation_service` 移除单索引回退 | `field_catalog.py`、`aggregation_service.py`、`logstash/pipeline/logstash.conf`、本 DEV.md | 指定 log_types 的聚合 API 命中 `app-logs-{type}-*`；pytest 18 passed（field_catalog + aggregation） | `search_logs` 仍用全局 pattern；历史统一索引数据仍在 |
+| 2026-06-23 | **真实 ES 联调修复聚合 bug**：`_terms_field` 原对所有字段补 `.keyword`，但索引模板将枚举字段直接映射为 `keyword`（仅 message/reason/change_summary 为 text+keyword 多字段），导致 `by_service` / `error_code` 分布 / `group_by` terms 聚合静默返回 0 桶；改为仅对多字段文本补 `.keyword`，其余原样返回 | `aggregation_service.py`、本 DEV.md | 真实 ES 验证：traffic.by_service、aggregate_errors、aggregate(group_by=service_name) 均正常返回桶 | — |

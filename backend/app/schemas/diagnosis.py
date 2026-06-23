@@ -328,3 +328,12 @@ class DiagnosisPageResponse(BaseModel):
     page: int
     page_size: int
     has_more: bool
+
+
+# 统一信封 data 负载模型：同步规则诊断门面输出（LLM 深挖走 analysis）
+class DiagnosisFacadeData(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    message: str = ""
+    input: Dict[str, Any] = Field(default_factory=dict)
+    diagnosis: Dict[str, Any] = Field(default_factory=dict)

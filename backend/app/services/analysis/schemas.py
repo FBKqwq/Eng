@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -51,7 +51,9 @@ def _parse_trigger_type(raw: dict[str, Any]) -> str | None:
 
 
 def _default_time_window() -> dict[str, str]:
-    end = datetime.now()
+    # 必须使用 UTC aware 时间：日志 timestamp 以 UTC 存储，若用 naive 本地时间，
+    # isoformat() 无时区后缀会被 ES 当作 UTC 解释，在非 UTC 时区造成窗口整体偏移、查不到数据。
+    end = datetime.now(timezone.utc)
     start = end - timedelta(minutes=settings.analysis_schedule_minutes)
     return {"start": start.isoformat(), "end": end.isoformat()}
 

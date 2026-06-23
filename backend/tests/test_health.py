@@ -7,7 +7,9 @@ def test_health() -> None:
     client = TestClient(app)
     response = client.get("/api/v1/health")
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    body = response.json()
+    assert body["ok"] is True
+    assert body["data"]["status"] == "ok"
 
 
 def test_log_search_returns_stable_page_shape() -> None:
@@ -16,11 +18,13 @@ def test_log_search_returns_stable_page_shape() -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert "items" in body
-    assert "total" in body
-    assert body["page"] == 1
-    assert body["page_size"] == 2
-    assert "has_more" in body
+    assert "ok" in body
+    data = body["data"]
+    assert "items" in data
+    assert "total" in data
+    assert data["page"] == 1
+    assert data["page_size"] == 2
+    assert "has_more" in data
 
 
 def test_diagnosis_accepts_keyword_and_returns_context_summary() -> None:
@@ -36,8 +40,10 @@ def test_diagnosis_accepts_keyword_and_returns_context_summary() -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["diagnosis"]["anomaly_type"] == "接口超时"
-    assert "context_summary" in body["diagnosis"]
+    assert body["ok"] is True
+    diagnosis = body["data"]["diagnosis"]
+    assert diagnosis["anomaly_type"] == "接口超时"
+    assert "context_summary" in diagnosis
 
 
 def test_log_generator_can_emit_nginx_web_server_log() -> None:

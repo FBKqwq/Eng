@@ -37,21 +37,16 @@ class AlertListItem(BaseModel):
   updated_at: datetime
 
 
-class AlertListResponse(BaseModel):
-  ok: bool = False
-  placeholder: bool = True
-  message: str = "活跃预警接口尚未实现"
-  items: List[AlertListItem] = Field(default_factory=list)
-  total: int = 0
-
-
 class AlertAckRequest(BaseModel):
   operator: Optional[str] = Field(default=None, description="确认人")
 
 
-class AlertAckResponse(BaseModel):
-  ok: bool = False
-  placeholder: bool = True
-  message: str = "预警确认接口尚未实现"
+# 统一信封 data 负载模型
+class AlertListData(BaseModel):
+  items: List[AlertListItem] = Field(default_factory=list)
+  total: int = 0
+
+
+class AlertAckData(BaseModel):
   alert_id: str
   status: AlertStatus = AlertStatus.acknowledged

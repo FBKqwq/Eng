@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any
 
@@ -75,7 +75,7 @@ def run_scheduled_subgraph(time_window: dict[str, Any] | None = None) -> dict[st
                 {
                     "node_name": "normalize_trigger",
                     "message": error_msg,
-                    "recorded_at": datetime.now().isoformat(),
+                    "recorded_at": datetime.now(timezone.utc).isoformat(),
                 }
             ],
         }

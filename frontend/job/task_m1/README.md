@@ -42,6 +42,7 @@ F1 **不做**：监控日志表真实查询（F2）、系统页能力迁移（F3
 | F1-15 | [F1-15-system_placeholder.md](./F1-15-system_placeholder.md) | `src/views/system/`（3 页）、`src/components/system/` | 其他所有文件 |
 | F1-16 | [F1-16-router.md](./F1-16-router.md) | `src/router/index.js` | 其他所有文件 |
 | F1-17 | [F1-17-dev_docs.md](./F1-17-dev_docs.md) | `frontend/DEV.md` | 业务代码文件 |
+| F1-18 | [F1-18-api_contract_retrofit.md](./F1-18-api_contract_retrofit.md) | `src/api/*`（含新建 `analysis.js`） | 业务代码文件（views/components） |
 
 ---
 
@@ -116,7 +117,8 @@ F1 **不做**：监控日志表真实查询（F2）、系统页能力迁移（F3
 4. **图表只进不出**：ECharts 实例只允许存在于 `components/common/charts/`，页面组件传 data/option，不直接 `import echarts`。
 5. **新增依赖仅 ECharts 一项**；不引入 Pinia、UI 组件库等大型依赖。
 6. **占位即占位**：F1 阶段所有业务区块用 `EmptyState` 占位，标注待接入信息或 `pending-api`；mock 数据须可识别为「演示数据」，禁止冒充真实数据。
-7. 全部中文使用**简体中文**；除非负责人明确要求，**不要 commit**。
+7. **API 契约**：所有 api 任务必读 [`job/API_CONTRACT.md`](../API_CONTRACT.md) 与 `backend/app/api/DEV.md` §4.2。
+8. 全部中文使用**简体中文**；除非负责人明确要求，**不要 commit**。
 
 ---
 
@@ -128,13 +130,13 @@ F1 **不做**：监控日志表真实查询（F2）、系统页能力迁移（F3
 - [ ] aside 底部链路健康微状态点可渲染并跳转 `/system/pipeline`。
 - [ ] 旧路由 `/`、`/monitor`、`/diagnosis`、`/results`、`/system` 正确重定向。
 - [ ] 6 个图表薄封装可在无数据时显示空态，不报错。
-- [ ] `metrics.js`/`alerts.js`/`reports.js` 的 `USE_MOCK=true` 返回契约化空数据，页面走真实调用路径。
+- [ ] `metrics.js`/`alerts.js`/`reports.js` 的 mock 返回 **契约化 `data` 负载**（`items+total` 等，见 API_CONTRACT §5）；**F1-18** 收口路径与 mock 形态。
 - [ ] `frontend/DEV.md` 已更新为新路由/目录/约束基线。
 
 ---
 
 ## 6. 基础设施与依赖声明
 
-- 后端聚合（metrics 六模板）、reports、alerts、logs/fields 接口未就绪不阻塞 F1；相关区块以 `EmptyState` 占位并标注 `pending-api`。
+- metrics 聚合（`POST /logs/aggregate`）未在 F1 页面接入；**F1-18** 修正 `metrics.js` 伪路径 `/metrics/*`。
 - `logs/search`、`system/status`、`system/pipeline/verify`、`health`、`diagnosis` 后端已有，F1 仅落 wrapper，不在 F1 接入页面真实渲染（留待 F2/F3/F5）。
 - 旧页面 `views/home`、`views/monitor/index`、`views/diagnosis/index`、`views/results`、`views/system/index` 在 F1 不删除，仅不再被新路由引用；其能力迁移分别由 F3（系统）、F5（诊断）承接。

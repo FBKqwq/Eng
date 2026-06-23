@@ -1,6 +1,5 @@
 <template>
-  <div class="config-page page-grid page-grid-2">
-    <ConfigSnapshotCard />
+  <div class="config-page">
     <ConfigSnapshotCard />
   </div>
 </template>

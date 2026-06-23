@@ -1,15 +1,26 @@
 <template>
-  <div class="chart-band page-grid page-grid-3">
-    <TrendChart v-for="tpl in chartTemplates" :key="tpl" :placeholder="`图表占位：${tpl} 聚合模板`" />
-    <EmptyState v-if="!chartTemplates.length" title="图表带占位" pending-api="metrics 六类聚合接口" compact />
+  <div class="chart-band">
+    <EmptyState
+      title="图表带占位"
+      :description="templateHint"
+      pending-api="POST /logs/aggregate（metrics.js 六模板）"
+      compact
+    />
   </div>
 </template>
 
 <script setup>
-import TrendChart from '../common/charts/TrendChart.vue'
+import { computed } from 'vue'
 import EmptyState from '../common/EmptyState.vue'
 
-defineProps({
+const props = defineProps({
   chartTemplates: { type: Array, default: () => [] }
+})
+
+const templateHint = computed(() => {
+  if (!props.chartTemplates.length) {
+    return '本日志类型暂未配置聚合图表模板'
+  }
+  return `已配置模板：${props.chartTemplates.join('、')}（F4 阶段接入聚合数据）`
 })
 </script>
