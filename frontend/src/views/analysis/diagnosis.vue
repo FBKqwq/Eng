@@ -10,7 +10,7 @@
       role="status"
       aria-live="polite"
     >
-      正在分析，请稍候…
+      {{ loadingMessage }}
     </div>
     <div
       v-else-if="errorMessage"
@@ -80,18 +80,20 @@ import ConclusionPanel from '../../components/analysis-diagnosis/ConclusionPanel
 import EvidenceTimeline from '../../components/analysis-diagnosis/EvidenceTimeline.vue'
 import ServiceTopology from '../../components/analysis-diagnosis/ServiceTopology.vue'
 import SuggestionChecklist from '../../components/analysis-diagnosis/SuggestionChecklist.vue'
-import { submitDiagnosis, USE_MOCK as DIAGNOSIS_USE_MOCK } from '../../api/diagnosis.js'
 import { triggerAnalysisRun, USE_MOCK as ANALYSIS_USE_MOCK } from '../../api/analysis.js'
+import { getReportDetail } from '../../api/reports.js'
 import { getActiveAlerts } from '../../api/alerts.js'
 
 const loading = ref(false)
+const loadingMessage = ref('LangGraph 规则子图运行中，预计需 20~60 秒…')
 const errorMessage = ref('')
 const diagnosisResult = ref(null)
 const nodeTrace = ref([])
 const alerts = ref([])
 const lastPayload = ref(null)
+const activeRequestKey = ref('')
 
-const showMockBadge = computed(() => DIAGNOSIS_USE_MOCK || ANALYSIS_USE_MOCK)
+const showMockBadge = computed(() => ANALYSIS_USE_MOCK)
 
 const diagnosisSeverity = computed(() =>
   String(diagnosisResult.value?.severity ?? '').toLowerCase()
@@ -114,6 +116,9 @@ const diagnosisAccentColor = computed(() => {
 })
 
 const isDegraded = computed(() => {
+  if (diagnosisResult.value?.degraded != null) {
+    return Boolean(diagnosisResult.value.degraded)
+  }
   const route = diagnosisResult.value?.route ?? diagnosisResult.value?.routing_result?.route
   return route === 'rule' || route === 'rule_only'
 })
@@ -149,6 +154,26 @@ const suggestions = computed(() => {
     .filter(Boolean)
 })
 
+const RULE_SUBGRAPH_NODE_KEYS = new Set([
+  'parse_trigger_event',
+  'fetch_context',
+  'correlate_events',
+  'build_evidence',
+  'infer_root_cause',
+  'assess_severity',
+  'generate_event_report'
+])
+
+function buildRequestKey(payload) {
+  return [
+    payload?.service_name,
+    payload?.keyword,
+    payload?.time_range_start,
+    payload?.time_range_end,
+    payload?.remark
+  ].join('|')
+}
+
 function enrichDiagnosis(diagnosis, input) {
   if (!diagnosis) return null
   const existing = Array.isArray(diagnosis.affected_services)
@@ -160,67 +185,126 @@ function enrichDiagnosis(diagnosis, input) {
   return { ...diagnosis, affected_services: [serviceName] }
 }
 
-async function fetchNodeTrace(payload) {
+function mapReportToDiagnosis(report) {
+  if (!report || typeof report !== 'object') return null
+  const ruleMatch = report.rule_match || {}
+  const suggestionsList = report.action_suggestions || report.recommendations || []
+
+  return {
+    anomaly_type: ruleMatch.rule_name || report.title || '事件异常分析',
+    severity: report.severity || 'medium',
+    route: report.degraded ? 'rule' : 'langgraph',
+    root_cause: report.root_cause || report.summary || '',
+    confidence: report.confidence,
+    summary: report.summary,
+    title: report.title,
+    affected_services: Array.isArray(report.affected_services) ? report.affected_services : [],
+    suggestion: suggestionsList,
+    evidence_logs: normalizeReportEvidence(report),
+    context_summary: {
+      matched_rules: ruleMatch.rule_id ? [ruleMatch.rule_id] : [],
+      rule_match: ruleMatch,
+      trigger_event: report.trigger_event,
+      degraded: report.degraded
+    },
+    degraded: report.degraded
+  }
+}
+
+function normalizeReportEvidence(report) {
+  if (Array.isArray(report.evidence_logs) && report.evidence_logs.length) {
+    return report.evidence_logs
+  }
+  const refs = report.evidence_refs
+  if (Array.isArray(refs) && refs.length) return refs
+  return []
+}
+
+function filterRuleSubgraphTrace(trace) {
+  if (!Array.isArray(trace) || !trace.length) return []
+  const ruleNodes = trace.filter((entry) => {
+    const name = String(entry?.node_name || '')
+    if (name.startsWith('rule.')) return true
+    const key = name.includes('.') ? name.split('.').pop() : name
+    return RULE_SUBGRAPH_NODE_KEYS.has(key)
+  })
+  return ruleNodes.length ? ruleNodes : trace
+}
+
+async function fetchAnalysisReport(reportId) {
+  if (!reportId) return null
+  const { data } = await getReportDetail(reportId)
+  return data?.report ?? null
+}
+
+async function runLangGraphAnalysis(payload) {
+  loadingMessage.value = 'LangGraph 规则子图运行中，预计需 20~60 秒…'
+  nodeTrace.value = [{ node_name: 'rule.fetch_context', status: 'running', duration_ms: 0 }]
+
+  let runData = null
   try {
     const res = await triggerAnalysisRun({
       trigger_type: 'rule',
       trigger_event: {
         service_name: payload?.service_name,
         keyword: payload?.keyword
+      },
+      time_window: {
+        start: payload?.time_range_start,
+        end: payload?.time_range_end
       }
     })
-    return res.data?.node_trace ?? []
+    runData = res.data
   } catch (e) {
     if (e.error?.code === 'graph_failed') {
-      return e.response?.data?.data?.node_trace ?? []
+      runData = e.response?.data?.data ?? null
+    } else {
+      throw e
     }
-    return []
   }
+
+  const trace = filterRuleSubgraphTrace(runData?.node_trace ?? [])
+  if (trace.length) nodeTrace.value = trace
+
+  loadingMessage.value = '正在加载规则子图报告…'
+  const report = await fetchAnalysisReport(runData?.report_id)
+  if (!report) {
+    throw new Error('规则子图已完成但未返回可展示的报告')
+  }
+
+  return { report, trace, errors: runData?.errors ?? [] }
 }
 
 async function handleSubmit(payload) {
+  const requestKey = buildRequestKey(payload)
+  if (loading.value && requestKey === activeRequestKey.value) return
+
   loading.value = true
   errorMessage.value = ''
   lastPayload.value = payload
-  nodeTrace.value = [
-    { node_name: 'fetch_context', status: 'running', duration_ms: 0 }
-  ]
+  activeRequestKey.value = requestKey
+  diagnosisResult.value = null
 
   try {
-    const { data } = await submitDiagnosis(payload)
-    diagnosisResult.value = enrichDiagnosis(data?.diagnosis, data?.input)
-    loading.value = false
+    const { report, trace, errors } = await runLangGraphAnalysis(payload)
+    diagnosisResult.value = enrichDiagnosis(mapReportToDiagnosis(report), payload)
+    if (trace.length) nodeTrace.value = trace
 
-    fetchNodeTrace(payload)
-      .then((trace) => {
-        if (Array.isArray(trace) && trace.length) {
-          nodeTrace.value = trace
-          return
-        }
-        nodeTrace.value = [
-          { node_name: 'fetch_context', status: 'success', duration_ms: 0 },
-          { node_name: 'rule_diagnose', status: 'success', duration_ms: 0 },
-          { node_name: 'assess_severity', status: 'success', duration_ms: 0 },
-          { node_name: 'generate_event_report', status: 'success', duration_ms: 0 }
-        ]
-      })
-      .catch(() => {
-        nodeTrace.value = [
-          { node_name: 'fetch_context', status: 'success', duration_ms: 0 },
-          { node_name: 'rule_diagnose', status: 'success', duration_ms: 0 },
-          { node_name: 'assess_severity', status: 'success', duration_ms: 0 },
-          { node_name: 'generate_event_report', status: 'success', duration_ms: 0 }
-        ]
-      })
+    if (errors?.length && !diagnosisResult.value?.root_cause) {
+      errorMessage.value = '规则子图部分节点失败，已展示可用结论'
+    }
   } catch (e) {
     diagnosisResult.value = null
     nodeTrace.value = []
     const code = e.error?.code
-    if (code === 'diagnosis_failed') {
-      errorMessage.value = e.error?.message || '诊断失败，请检查输入后重试'
+    if (code === 'graph_failed') {
+      errorMessage.value = e.error?.message || 'LangGraph 规则子图执行失败'
+    } else if (code === 'query_failed') {
+      errorMessage.value = e.error?.message || '报告加载失败，请稍后重试'
     } else {
-      errorMessage.value = e.error?.message || e.message || '诊断请求失败'
+      errorMessage.value = e.error?.message || e.message || 'LangGraph 推断请求失败'
     }
+  } finally {
     loading.value = false
   }
 }

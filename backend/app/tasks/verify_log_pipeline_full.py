@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import threading
 import time
@@ -23,8 +24,26 @@ from typing import Any
 from dotenv import load_dotenv
 
 _early_backend = Path(__file__).resolve().parents[2]
-load_dotenv(_early_backend.parent / ".env")
-load_dotenv(_early_backend / ".env")
+_DOTENV_ROUTE_KEYS = {
+    "KAFKA_BOOTSTRAP_SERVERS",
+    "KAFKA_TOPIC",
+    "ELASTICSEARCH_HOSTS",
+    "ELASTICSEARCH_INDEX_PATTERN",
+    "ELASTICSEARCH_USERNAME",
+    "KIBANA_BASE_URL",
+}
+
+
+def _load_dotenv_preserving_gateway_yaml() -> None:
+    """读取 .env 密钥，但避免 .env 的路由项压过 config/gateway.yaml。"""
+    existing_route_env = {key for key in _DOTENV_ROUTE_KEYS if key in os.environ}
+    load_dotenv(_early_backend.parent / ".env")
+    load_dotenv(_early_backend / ".env")
+    for key in _DOTENV_ROUTE_KEYS - existing_route_env:
+        os.environ.pop(key, None)
+
+
+_load_dotenv_preserving_gateway_yaml()
 
 from elasticsearch import Elasticsearch
 from kafka import KafkaConsumer
@@ -312,8 +331,7 @@ def _produce_logs_concurrently(
 
 
 def main() -> int:
-    load_dotenv(_early_backend.parent / ".env")
-    load_dotenv(_early_backend / ".env")
+    _load_dotenv_preserving_gateway_yaml()
     _reconfigure_stdio_utf8()
 
     args = _parse_args()

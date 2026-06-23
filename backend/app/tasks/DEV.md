@@ -32,7 +32,7 @@
 - 启动失败（topic 预建或 producer 连接）时向 stderr 输出可诊断中文提示并带退出码。
 - 支持 `--count`、`--topic`、`--workers` 命令行参数。
 - `verify_log_kafka_pipeline.py`：先发后收，用独立 consumer group 与 `latest` 偏移证明 producer 写入可被消费。
-- `verify_log_pipeline_full.py`：分段打印各环产出；Kafka 内校验后轮询 ES；支持 `--workers` 多线程生成。
+- `verify_log_pipeline_full.py`：分段打印各环产出；Kafka 内校验后轮询 ES；支持 `--workers` 多线程生成；脚本显式读取 `.env` 密钥时不再让 `.env` 路由项覆盖 `config/gateway.yaml`。
 
 ### init_indices.py（M1-03）
 
@@ -108,7 +108,7 @@ python -m app.tasks.run_trigger_scanner
 |---|---|---|---|---|---|
 | run_log_producer | 稳定可用 | 2026-05-19 | codex | 低 | 支持多线程生产 |
 | verify_log_kafka_pipeline | 稳定可用 | 2026-05-14 | codex | 低 | 依赖本机 Kafka |
-| verify_log_pipeline_full | 稳定可用 | 2026-05-19 | codex | 低 | 需 Kafka + Logstash + ES |
+| verify_log_pipeline_full | 稳定可用 | 2026-06-23 | Codex | 低 | 需 Kafka + Logstash + ES；远程协作时按 `config/gateway.yaml` 路由 |
 | init_indices | M1 已完成 | 2026-06-16 | elk-backend-agent (M1-03) | 低 | 真实调用 index_service；需 ES 管理权限 |
 | run_scheduler | M4 已完成 | 2026-06-22 | elk-backend-agent (M4-07) | 低 | `--once` 或常驻；APScheduler max_instances=1 |
 | run_trigger_scanner | M5 已完成 | 2026-06-22 | elk-backend-agent (M5-08) | 低 | `--once` 或常驻；仅 import trigger_scanner |
@@ -145,3 +145,4 @@ python -m app.tasks.run_trigger_scanner
 | 2026-06-22 | **M4-07**：新增 `run_scheduler.py` | `run_scheduler.py` | 定时分析任务入口；`--once` 与常驻模式 | 依赖 ES 与 LLM 可选降级 |
 | 2026-06-22 | **M5-08**：新增 `run_trigger_scanner.py` | `run_trigger_scanner.py` | 规则扫描任务入口；`--once` 与常驻模式 | 频率规则聚合待 diagnosis P1 |
 | 2026-06-22 | 同步 Tasks DEV 至 M5 现状 | `app/tasks/DEV.md` | 总览、状态表、调度/扫描入口文档化 | — |
+| 2026-06-23 | 修复全链路验证子进程配置优先级 | `verify_log_pipeline_full.py`、`app/tasks/DEV.md` | 子进程读取 `.env` 后会清理非真实进程环境注入的 Kafka/ES/Kibana 路由项，避免覆盖 `config/gateway.yaml`；短链路验证打印 `26.167.86.202` 并通过 | 小组成员需拉取该修复或清空本地 `.env` 路由项后重启后端 |

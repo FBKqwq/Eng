@@ -6,33 +6,40 @@
     </div>
 
     <div v-if="loading" class="filter-skeleton" aria-busy="true" aria-label="加载筛选字段">
-      <div v-for="n in 4" :key="n" class="skeleton-field" />
+      <div v-for="n in 5" :key="n" class="skeleton-field" />
     </div>
 
     <template v-else>
-      <div class="filter-toolbar">
+      <header class="filter-toolbar">
         <span class="filter-toolbar__title">筛选</span>
-        <button
-          v-if="advancedFields.length"
-          type="button"
-          class="filter-toolbar__toggle"
-          @click="showAdvanced = !showAdvanced"
-        >
-          {{ showAdvanced ? '收起高级筛选' : '展开高级筛选' }}
-          <span v-if="advancedActiveCount" class="filter-toolbar__badge">{{ advancedActiveCount }}</span>
-        </button>
-      </div>
+        <div class="filter-toolbar__actions">
+          <button
+            v-if="advancedFields.length"
+            type="button"
+            class="filter-toolbar__toggle"
+            :aria-expanded="showAdvanced"
+            @click="showAdvanced = !showAdvanced"
+          >
+            {{ showAdvanced ? '收起高级筛选' : '展开高级筛选' }}
+            <span v-if="advancedActiveCount" class="filter-toolbar__badge">{{ advancedActiveCount }}</span>
+          </button>
+          <button type="button" class="btn-reset" @click="resetFilters">重置全部</button>
+        </div>
+      </header>
 
-      <div class="filter-grid filter-grid--common">
-        <FilterFieldControl
-          v-for="field in commonFields"
-          :key="field.key"
-          :field="field"
-          :model-value="modelValue"
-          @patch="patchModel"
-        />
+      <section class="filter-section" aria-label="常用筛选">
+        <p class="filter-section__label">常用筛选</p>
+        <div class="filter-grid filter-grid--5">
+          <FilterFieldControl
+            v-for="field in commonFields"
+            :key="field.key"
+            :field="field"
+            :model-value="modelValue"
+            @patch="patchModel"
+          />
+        </div>
 
-        <div class="filter-field filter-field--keyword">
+        <div class="filter-keyword-row">
           <label class="filter-label" for="filter-keyword">关键字</label>
           <input
             id="filter-keyword"
@@ -44,33 +51,37 @@
           />
           <p class="filter-hint">不支持精确筛选的字段（如 action、URI、IP）请在此搜索</p>
         </div>
-      </div>
+      </section>
 
-      <div v-show="showAdvanced && advancedFields.length" class="filter-grid filter-grid--advanced">
-        <FilterFieldControl
-          v-for="field in advancedFields"
-          :key="field.key"
-          :field="field"
-          :model-value="modelValue"
-          @patch="patchModel"
-        />
-      </div>
-
-      <div class="filter-actions">
-        <button type="button" class="btn-reset" @click="resetFilters">重置全部</button>
-      </div>
+      <section
+        v-if="advancedFields.length && showAdvanced"
+        class="filter-section filter-section--advanced"
+        aria-label="高级筛选"
+      >
+        <p class="filter-section__label">高级筛选</p>
+        <div class="filter-grid filter-grid--4">
+          <FilterFieldControl
+            v-for="field in advancedFields"
+            :key="field.key"
+            :field="field"
+            :model-value="modelValue"
+            @patch="patchModel"
+          />
+        </div>
+      </section>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, defineComponent, h } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { getLogFields } from '../../api/logs.js'
 import { getLogTypeMeta } from '../../utils/logTypeMeta.js'
 import {
   buildFilterDescriptorsFromCatalog,
   buildFilterDescriptorsFromFallback
 } from '../../utils/logQueryContract.js'
+import FilterFieldControl from './FilterFieldControl.vue'
 
 const props = defineProps({
   logType: { type: String, required: true },
@@ -97,103 +108,6 @@ function hasValue(val) {
     (Array.isArray(val) && val.length === 0) ||
     (typeof val === 'object' && !Array.isArray(val) && !Object.keys(val).length)
   )
-}
-
-const FilterFieldControl = defineComponent({
-  name: 'FilterFieldControl',
-  props: {
-    field: { type: Object, required: true },
-    modelValue: { type: Object, default: () => ({}) }
-  },
-  emits: ['patch'],
-  setup(fieldProps, { emit: fieldEmit }) {
-    return () => {
-      const field = fieldProps.field
-      const id = `filter-${field.key}`
-      const val = fieldProps.modelValue[field.key]
-
-      if (field.type === 'terms' && field.options?.length) {
-        return h('div', { class: 'filter-field' }, [
-          h('label', { class: 'filter-label', for: id }, field.label),
-          h(
-            'select',
-            {
-              id,
-              class: 'filter-control',
-              multiple: field.multiple,
-              value: selectValue(field, val),
-              onChange: (e) => onSelectChange(field, e, fieldEmit)
-            },
-            [
-              !field.multiple ? h('option', { value: '' }, '全部') : null,
-              ...field.options.map((opt) => h('option', { key: opt, value: opt }, opt))
-            ]
-          )
-        ])
-      }
-
-      if (field.type === 'terms') {
-        const text = !val ? '' : Array.isArray(val) ? val.join(', ') : String(val)
-        return h('div', { class: 'filter-field' }, [
-          h('label', { class: 'filter-label', for: id }, field.label),
-          h('input', {
-            id,
-            class: 'filter-control',
-            type: 'text',
-            value: text,
-            placeholder: field.numeric ? '如 400,500' : '多个值用逗号分隔',
-            onInput: (e) => onTermsInput(field, e, fieldEmit)
-          })
-        ])
-      }
-
-      return h('div', { class: 'filter-field' }, [
-        h('label', { class: 'filter-label', for: id }, field.label),
-        h('input', {
-          id,
-          class: 'filter-control',
-          type: 'text',
-          value: val == null ? '' : String(val),
-          placeholder: field.placeholder || '精确匹配',
-          onInput: (e) => fieldEmit('patch', { [field.key]: e.target.value })
-        })
-      ])
-    }
-  }
-})
-
-function selectValue(field, val) {
-  if (!val) return field.multiple ? [] : ''
-  if (field.multiple) return Array.isArray(val) ? val : [val]
-  return Array.isArray(val) ? val[0] : val
-}
-
-function onTermsInput(field, event, fieldEmit) {
-  const text = event.target.value.trim()
-  if (!text) {
-    fieldEmit('patch', { [field.key]: undefined })
-    return
-  }
-  const parts = text
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  if (field.numeric) {
-    const nums = parts.map((p) => Number(p)).filter((n) => Number.isFinite(n))
-    fieldEmit('patch', { [field.key]: nums.length ? nums : undefined })
-    return
-  }
-  fieldEmit('patch', { [field.key]: parts })
-}
-
-function onSelectChange(field, event, fieldEmit) {
-  const el = event.target
-  if (field.multiple) {
-    const selected = Array.from(el.selectedOptions).map((opt) => opt.value)
-    fieldEmit('patch', { [field.key]: selected.length ? selected : undefined })
-    return
-  }
-  fieldEmit('patch', { [field.key]: el.value ? [el.value] : undefined })
 }
 
 async function loadFields() {
@@ -248,7 +162,7 @@ watch(() => props.logType, loadFields)
 .dynamic-filter-bar {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   padding: var(--spacing-md);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -276,25 +190,40 @@ watch(() => props.logType, loadFields)
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
+  flex-wrap: wrap;
 }
 
 .filter-toolbar__title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
+}
+
+.filter-toolbar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .filter-toolbar__toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  height: 32px;
+  padding: 0 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-bg);
   color: var(--color-text-secondary);
   font-size: 12px;
   cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.filter-toolbar__toggle:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .filter-toolbar__badge {
@@ -311,14 +240,87 @@ watch(() => props.logType, loadFields)
   font-weight: 700;
 }
 
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-section--advanced {
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.filter-section__label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.filter-grid {
+  display: grid;
+  gap: 10px 12px;
+  align-items: start;
+}
+
+.filter-grid--5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.filter-grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.filter-keyword-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  line-height: 1.2;
+}
+
+.filter-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.btn-reset {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-reset:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 .filter-skeleton {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--spacing-sm);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .skeleton-field {
-  height: 56px;
+  height: 52px;
   border-radius: var(--radius-sm);
   background: linear-gradient(
     90deg,
@@ -339,79 +341,26 @@ watch(() => props.logType, loadFields)
   }
 }
 
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--spacing-sm);
+@media (max-width: 1100px) {
+  .filter-grid--5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .filter-grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-skeleton {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
-.filter-grid--advanced {
-  padding-top: var(--spacing-sm);
-  border-top: 1px dashed var(--color-border);
-}
-
-.filter-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.filter-field--keyword {
-  grid-column: 1 / -1;
-}
-
-.filter-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-.filter-control {
-  width: 100%;
-  padding: 7px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  font-size: 13px;
-  color: var(--color-text);
-  box-sizing: border-box;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.filter-control:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
-}
-
-.filter-hint {
-  margin: 0;
-  font-size: 11px;
-  color: var(--color-text-muted);
-  line-height: 1.4;
-}
-
-.filter-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 2px;
-}
-
-.btn-reset {
-  padding: 6px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast);
-}
-
-.btn-reset:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+@media (max-width: 640px) {
+  .filter-grid--5,
+  .filter-grid--4,
+  .filter-skeleton {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
