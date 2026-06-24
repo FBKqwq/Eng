@@ -242,8 +242,8 @@ function descriptorFromField(fieldName) {
     tier: mapped.tier,
     numeric: Boolean(mapped.numeric),
     options: mapped.type === 'terms' ? mapped.options : undefined,
-    multiple: mapped.type === 'terms',
-    placeholder: mapped.type === 'keyword' ? '精确匹配' : '多个值用逗号分隔'
+    multiple: false,
+    placeholder: mapped.type === 'keyword' ? '精确匹配' : mapped.type === 'terms' && mapped.options ? '全部' : '多个值用逗号分隔'
   }
 }
 

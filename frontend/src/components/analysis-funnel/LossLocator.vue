@@ -133,55 +133,66 @@ function goToApplicationLogs() {
 
 .loss-locator__header h2 {
   margin: 0;
+  color: #f2f5f7;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .loss-locator__mock {
   flex-shrink: 0;
   padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
+  border: 1px solid rgba(178, 139, 90, 0.42);
+  border-radius: 2px;
+  background: rgba(178, 139, 90, 0.12);
+  color: #c3a06d;
   font-size: 11px;
+  font-weight: 900;
   line-height: 1.4;
 }
 
 .loss-hint {
   margin: 0 0 var(--spacing-sm);
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #aab4bf;
+  line-height: 1.5;
 }
 
 .loss-hint strong {
-  color: var(--color-text);
-  font-weight: 600;
+  color: #f2f5f7;
+  font-weight: 900;
 }
 
 .loss-locator__retry {
   margin-top: var(--spacing-sm);
   padding: 6px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-primary);
-  font-size: 13px;
+  border: 1px solid rgba(111, 158, 172, 0.42);
+  border-radius: 2px;
+  background: rgba(111, 158, 172, 0.1);
+  color: #c9dde2;
+  font-size: 12px;
+  font-weight: 900;
   cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 100%, 0 100%);
 }
 
 .jump-btn {
   align-self: flex-start;
   margin-top: var(--spacing-sm);
   padding: 6px 14px;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-primary);
+  border: 1px solid rgba(111, 158, 172, 0.48);
+  border-radius: 2px;
+  background: rgba(111, 158, 172, 0.1);
+  color: #c9dde2;
   font-size: 12px;
+  font-weight: 900;
   cursor: pointer;
   transition: background 150ms ease;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 100%, 0 100%);
 }
 
 .jump-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  background: rgba(111, 158, 172, 0.18);
+  color: #f2f5f7;
 }
 
 .jump-btn:disabled {

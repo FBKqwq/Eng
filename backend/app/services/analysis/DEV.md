@@ -154,7 +154,7 @@ normalize_trigger → build_state → route（条件分支）
 | `state` | 已实现（M4 最小版） | 2026-06-22 | elk-backend-agent (M4-03) | 低 | create_initial_state / append_node_trace / record_error |
 | `graph_scheduled` | 已实现（M7-04 七节点） | 2026-06-22 | 定时子图 Agent (M7-04) | 低 | 含 analyze_relations；relations 注入报告 |
 | `scheduler` | 已实现（M6 收敛） | 2026-06-22 | elk-backend-agent (M6-03) | 低 | run_once 委托 run_main_graph |
-| `graph_rule` | 已实现（M5 最小版） | 2026-06-22 | M5-06 Agent | 中 | 七节点；节点降级不中断 |
+| `graph_rule` | 已实现（M5 最小版） | 2026-06-23 | elk-backend-agent | 中 | 七节点；correlate_events 时区排序已修复 |
 | `trigger_scanner` | 已实现（M6 收敛） | 2026-06-22 | elk-backend-agent (M6-04) | 低 | scan_once 委托主图；无直接持久化 |
 | `graph_main` | 已实现（M6） | 2026-06-22 | elk-backend-agent (M6-02) | 低 | 七节点主图；persist_result 唯一写库收口 |
 | Analysis 层整体 | M4 定时 + M5 规则 + M6 主图 + M7 关系节点完成 | 2026-06-22 | 文档 Agent (M7-10) | 低 | 定时子图七节点已对齐总体规划 |
@@ -200,3 +200,4 @@ normalize_trigger → build_state → route（条件分支）
 | 2026-06-22 | M7-04：定时子图七节点 + analyze_relations | `graph_scheduled.py` | relations 写 state 并注入报告；降级 skipped | — |
 | 2026-06-22 | **M7-10：文档收口** | `analysis/DEV.md` | 七节点流、relations 注入/降级已记录；移除 M7 待实现措辞 | 单测见 M7-09 |
 | 2026-06-23 | **真实 ELK 端到端联调 + 时区 bug 修复** | `schemas.py`、`graph_scheduled.py`、`graph_rule.py`、`graph_main.py` | `_default_time_window` 原用 naive 本地 `datetime.now()`，isoformat 无时区后缀被 ES 当 UTC 解释，在 UTC+8 造成定时窗口整体偏移 8 小时、聚合/采样恒为空（report degraded=False 但 total_logs=0）；改为 `datetime.now(timezone.utc)`，并将 graph_rule 上下文窗口 anchor 兜底、各处 recorded_at/created_at 统一为 UTC。修复后定时主图采样 31 条、发现 3 条关系、风险定级 high 并出预警；规则主图根因诊断 + 预警 + 去重幂等均真实跑通 | scheduler 默认窗口为 `analysis_schedule_minutes`（15min），一次性手动触发需确保数据在窗口内 |
+| 2026-06-23 | **correlate_events 时区排序修复** | `graph_rule.py` | `sorted` 回退键 `datetime.min` 为 naive，与 ES 日志 UTC aware 时间戳比较时报错；改为 UTC aware 回退且 `_parse_iso_datetime` 统一补 UTC | 规则子图关联节点在真实 ELK 环境不再 failed；需重启后端进程生效 |

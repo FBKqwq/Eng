@@ -4,7 +4,7 @@
       <p class="entry-panel__eyebrow">LangGraph Context</p>
       <h2>智能推断源</h2>
       <p class="entry-panel__desc">
-        基于活跃预警、路由上下文与全局时间窗自动取证，不再使用手工日志投喂。
+        进入页面或切换预警后自动运行 LangGraph 规则子图；基于活跃预警与全局时间窗取证。
       </p>
     </div>
 
@@ -57,7 +57,7 @@
       :disabled="!canSubmit"
       @click="handleSubmit"
     >
-      {{ loading ? '推断链路运行中…' : '运行智能推断' }}
+      {{ loading ? '规则子图运行中…' : '重新推断' }}
     </button>
 
     <p v-if="validationMessage" class="validation-msg" role="alert">
@@ -67,7 +67,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTimeRange } from '../../composables/useTimeRange.js'
 import { formatTime } from '../../utils/format.js'
@@ -84,6 +84,7 @@ const { presets, preset, range } = useTimeRange()
 
 const selectedAlertId = ref('')
 const routeServiceName = ref('')
+const autoRunTimer = ref(null)
 
 const alertOptions = computed(() => props.alerts ?? [])
 
@@ -173,6 +174,15 @@ function handleSubmit() {
   emit('submit', buildPayload())
 }
 
+function scheduleAutoRun() {
+  if (autoRunTimer.value) clearTimeout(autoRunTimer.value)
+  autoRunTimer.value = setTimeout(() => {
+    autoRunTimer.value = null
+    if (!canSubmit.value) return
+    emit('submit', buildPayload())
+  }, 320)
+}
+
 function applyRouteQuery(query) {
   if (!query || typeof query !== 'object') return
   if (query.alert_id) selectedAlertId.value = String(query.alert_id)
@@ -187,6 +197,11 @@ function pickDefaultAlert(items) {
 onMounted(() => {
   applyRouteQuery(route.query)
   emit('request-alerts')
+  scheduleAutoRun()
+})
+
+onBeforeUnmount(() => {
+  if (autoRunTimer.value) clearTimeout(autoRunTimer.value)
 })
 
 watch(() => route.query, applyRouteQuery, { deep: true })
@@ -198,8 +213,14 @@ watch(
     if (!selectedAlertId.value || !items?.length) return
     const exists = items.some((item) => item.alert_id === selectedAlertId.value)
     if (!exists) selectedAlertId.value = items[0]?.alert_id ?? ''
+    scheduleAutoRun()
   },
   { immediate: true }
+)
+
+watch(
+  [selectedAlertId, routeServiceName, () => preset.value, () => range.value.start, () => range.value.end],
+  scheduleAutoRun
 )
 </script>
 

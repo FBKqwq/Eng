@@ -1,10 +1,9 @@
 import json
 import socket
 import subprocess
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, Optional, Tuple
 from urllib.parse import urlparse
 
-from app.core.config import settings
 from app.schemas.system import ContainerStatus, DockerStatusResponse
 
 
@@ -183,6 +182,8 @@ def _gateway_probe_container(service: str) -> Optional[ContainerStatus]:
 
 
 def _gateway_probe_endpoint(service: str) -> Optional[tuple[str, int]]:
+    from app.core.config import settings
+
     if service == "kafka":
         return _host_port_from_bootstrap(getattr(settings, "kafka_bootstrap_servers", ""), default_port=9092)
     if service == "elasticsearch":

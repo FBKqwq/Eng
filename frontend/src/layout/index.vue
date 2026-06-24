@@ -12,7 +12,7 @@
     </aside>
     <div class="content">
       <TopBar />
-      <main class="main">
+      <main class="main" :class="{ 'main--analysis': isAnalysisRoute }">
         <router-view />
       </main>
     </div>
@@ -20,10 +20,15 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { provideTimeRange } from '../composables/useTimeRange.js'
 import SidebarTree from './components/SidebarTree.vue'
 import TopBar from './components/TopBar.vue'
 import PipelineHealthDot from './components/PipelineHealthDot.vue'
+
+const route = useRoute()
+const isAnalysisRoute = computed(() => String(route.path || '').startsWith('/analysis/'))
 
 provideTimeRange()
 </script>
@@ -85,5 +90,10 @@ provideTimeRange()
   padding: 24px;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+.main--analysis {
+  padding: 0;
+  background: #080b10;
 }
 </style>

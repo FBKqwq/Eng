@@ -427,11 +427,11 @@ function handleCellClick(col, row, event) {
 <style scoped>
 .log-table {
   margin-top: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  border: 1px solid rgba(185, 196, 207, 0.16);
+  border-radius: 2px;
+  background: rgba(7, 10, 14, 0.58);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .log-table-header {
@@ -440,25 +440,48 @@ function handleCellClick(col, row, event) {
   justify-content: space-between;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg);
+  border-bottom: 1px solid rgba(185, 196, 207, 0.16);
+  background: rgba(12, 15, 20, 0.88);
 }
 
 .log-table-header h3 {
   margin: 0;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 900;
+  color: #f2f5f7;
 }
 
 .log-table-meta {
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #8e9aa6;
 }
 
 .log-table-scroll {
-  overflow-x: auto;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
   transition: opacity 180ms ease;
+  background:
+    linear-gradient(90deg, rgba(111, 158, 172, 0.035) 0 1px, transparent 1px 28px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026) 0 1px, transparent 1px 28px),
+    rgba(7, 10, 14, 0.58);
+  background-size: 28px 28px;
+}
+
+.log-table-scroll::-webkit-scrollbar,
+.expand-json::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.log-table-scroll::-webkit-scrollbar-track,
+.expand-json::-webkit-scrollbar-track {
+  background: rgba(7, 10, 14, 0.72);
+}
+
+.log-table-scroll::-webkit-scrollbar-thumb,
+.expand-json::-webkit-scrollbar-thumb {
+  background: rgba(185, 196, 207, 0.22);
+  border: 2px solid rgba(7, 10, 14, 0.72);
 }
 
 .log-table-scroll.is-refreshing {
@@ -470,20 +493,24 @@ function handleCellClick(col, row, event) {
   width: 100%;
   min-width: 640px;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12px;
   table-layout: fixed;
 }
 
 .log-table-grid th {
-  padding: 10px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 9px 11px;
   text-align: left;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg);
+  font-weight: 900;
+  color: #9fb0ba;
+  border-bottom: 1px solid rgba(185, 196, 207, 0.18);
+  background: rgba(12, 15, 20, 0.96);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: uppercase;
 }
 
 .log-table-grid th.sortable {
@@ -491,19 +518,19 @@ function handleCellClick(col, row, event) {
 }
 
 .log-table-grid th.sortable:hover {
-  color: var(--color-text);
-  background: #eceff3;
+  color: #f2f5f7;
+  background: rgba(111, 158, 172, 0.12);
 }
 
 .log-table-grid th.sorted {
-  color: var(--color-primary);
+  color: #8fb4bd;
 }
 
 .th-unit {
   margin-left: 2px;
   font-size: 11px;
-  color: var(--color-text-muted);
-  font-weight: 400;
+  color: #737f8c;
+  font-weight: 800;
 }
 
 .sort-indicator {
@@ -536,9 +563,9 @@ function handleCellClick(col, row, event) {
 }
 
 .log-table-grid td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-text);
+  padding: 9px 11px;
+  border-bottom: 1px solid rgba(185, 196, 207, 0.1);
+  color: #dce4eb;
   vertical-align: middle;
   overflow: hidden;
 }
@@ -549,11 +576,11 @@ function handleCellClick(col, row, event) {
 }
 
 .data-row:hover {
-  background: #f9fafb;
+  background: rgba(111, 158, 172, 0.08);
 }
 
 .data-row.expanded {
-  background: #f3f4f6;
+  background: rgba(111, 158, 172, 0.12);
 }
 
 .col-expand {
@@ -570,10 +597,10 @@ function handleCellClick(col, row, event) {
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
+  border: 1px solid rgba(185, 196, 207, 0.18);
+  border-radius: 2px;
+  background: rgba(12, 15, 20, 0.72);
+  color: #9fb0ba;
   cursor: pointer;
 }
 
@@ -612,7 +639,7 @@ function handleCellClick(col, row, event) {
 }
 
 .cell-muted {
-  color: var(--color-text-muted);
+  color: #737f8c;
 }
 
 .cell-inline-actions {
@@ -625,16 +652,22 @@ function handleCellClick(col, row, event) {
 .cell-action-btn {
   flex-shrink: 0;
   padding: 2px 6px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-primary);
+  border: 1px solid rgba(111, 158, 172, 0.42);
+  border-radius: 2px;
+  background: rgba(111, 158, 172, 0.1);
+  color: #c9dde2;
   font-size: 11px;
+  font-weight: 900;
   cursor: pointer;
 }
 
 .cell-action-btn--ghost {
-  color: var(--color-text-secondary);
+  color: #8e9aa6;
+}
+
+.cell-action-btn:hover {
+  background: rgba(111, 158, 172, 0.18);
+  color: #f2f5f7;
 }
 
 .http-status-pill {
@@ -643,40 +676,40 @@ function handleCellClick(col, row, event) {
   justify-content: center;
   min-width: 42px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 2px;
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .http-status-pill.tone-success {
-  background: var(--color-success-bg);
-  color: var(--color-success);
+  background: rgba(109, 148, 130, 0.16);
+  color: #8ab49f;
 }
 
 .http-status-pill.tone-warning {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
+  background: rgba(178, 139, 90, 0.16);
+  color: #c3a06d;
 }
 
 .http-status-pill.tone-danger {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
+  background: rgba(185, 106, 97, 0.16);
+  color: #d4877c;
 }
 
 .http-status-pill.tone-info {
-  background: var(--color-info-bg);
-  color: var(--color-info);
+  background: rgba(111, 158, 172, 0.16);
+  color: #8fb4bd;
 }
 
 .http-status-pill.tone-muted {
-  background: var(--color-bg);
-  color: var(--color-text-muted);
+  background: rgba(185, 196, 207, 0.08);
+  color: #8e9aa6;
 }
 
 .expand-row td {
   padding: 0;
-  background: #f9fafb;
+  background: rgba(7, 10, 14, 0.72);
 }
 
 .expand-panel {
@@ -686,15 +719,16 @@ function handleCellClick(col, row, event) {
 .expand-panel__hint {
   margin: 0 0 8px;
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: #8e9aa6;
 }
 
 .expand-json {
   margin: 0;
   padding: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  border: 1px solid rgba(185, 196, 207, 0.16);
+  border-radius: 2px;
+  background: rgba(12, 15, 20, 0.78);
+  color: #dce4eb;
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;
@@ -710,8 +744,8 @@ function handleCellClick(col, row, event) {
 .skeleton-block {
   display: block;
   height: 12px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #eceff3 0%, #f5f6f8 50%, #eceff3 100%);
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(185, 196, 207, 0.08) 0%, rgba(185, 196, 207, 0.18) 50%, rgba(185, 196, 207, 0.08) 100%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.2s ease-in-out infinite;
 }
@@ -729,8 +763,8 @@ function handleCellClick(col, row, event) {
   justify-content: space-between;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-bg);
+  border-top: 1px solid rgba(185, 196, 207, 0.16);
+  background: rgba(12, 15, 20, 0.88);
 }
 
 .page-size-control {
@@ -738,14 +772,15 @@ function handleCellClick(col, row, event) {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: #8e9aa6;
 }
 
 .page-size-select {
   padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  border: 1px solid rgba(185, 196, 207, 0.18);
+  border-radius: 2px;
+  background: rgba(7, 10, 14, 0.66);
+  color: #dce4eb;
   font-size: 13px;
 }
 
@@ -757,11 +792,18 @@ function handleCellClick(col, row, event) {
 
 .page-btn {
   padding: 6px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  border: 1px solid rgba(185, 196, 207, 0.18);
+  border-radius: 2px;
+  background: rgba(7, 10, 14, 0.66);
+  color: #dce4eb;
   font-size: 13px;
   cursor: pointer;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: rgba(111, 158, 172, 0.42);
+  background: rgba(111, 158, 172, 0.12);
+  color: #f2f5f7;
 }
 
 .page-btn:disabled {
@@ -771,16 +813,16 @@ function handleCellClick(col, row, event) {
 
 .page-info {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: #8e9aa6;
 }
 
 .retry-btn {
   margin-top: var(--spacing-sm);
   padding: 6px 16px;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  background: var(--color-primary);
-  color: var(--color-surface);
+  border: 1px solid rgba(111, 158, 172, 0.48);
+  border-radius: 2px;
+  background: rgba(111, 158, 172, 0.14);
+  color: #e7f2f4;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;

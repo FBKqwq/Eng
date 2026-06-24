@@ -157,6 +157,7 @@ function formatStatus(status) {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+  color: #dce4eb;
 }
 
 .alert-table__header {
@@ -166,14 +167,33 @@ function formatStatus(status) {
 
 .alert-table__meta {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: #8e9aa6;
 }
 
 .alert-table__scroll {
-  overflow-x: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  max-height: 430px;
+  overflow: auto;
+  border: 1px solid rgba(185, 196, 207, 0.16);
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, rgba(111, 158, 172, 0.035) 0 1px, transparent 1px 28px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026) 0 1px, transparent 1px 28px),
+    rgba(7, 10, 14, 0.58);
+  background-size: 28px 28px;
+}
+
+.alert-table__scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.alert-table__scroll::-webkit-scrollbar-track {
+  background: rgba(7, 10, 14, 0.72);
+}
+
+.alert-table__scroll::-webkit-scrollbar-thumb {
+  background: rgba(185, 196, 207, 0.22);
+  border: 2px solid rgba(7, 10, 14, 0.72);
 }
 
 .alert-table__scroll.is-refreshing {
@@ -185,43 +205,48 @@ function formatStatus(status) {
   width: 100%;
   min-width: 720px;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .alert-table__grid th {
-  padding: 10px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 9px 11px;
   text-align: left;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg);
+  font-weight: 900;
+  color: #9fb0ba;
+  border-bottom: 1px solid rgba(185, 196, 207, 0.18);
+  background: rgba(12, 15, 20, 0.96);
   white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .alert-table__grid td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-text);
+  padding: 9px 11px;
+  border-bottom: 1px solid rgba(185, 196, 207, 0.1);
+  color: #dce4eb;
   vertical-align: middle;
 }
 
 .alert-row {
   cursor: pointer;
-  transition: background 150ms ease;
+  transition: background 150ms ease, box-shadow 150ms ease;
 }
 
 .alert-row:hover,
 .alert-row:focus-visible {
-  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  background: rgba(111, 158, 172, 0.08);
   outline: none;
 }
 
 .alert-row.is-selected {
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  background: rgba(111, 158, 172, 0.12);
+  box-shadow: inset 3px 0 0 #6f9eac;
 }
 
 .alert-row.is-active td:first-child {
-  box-shadow: inset 3px 0 0 var(--color-danger);
+  box-shadow: inset 3px 0 0 #b96a61;
 }
 
 .cell-service {
@@ -236,19 +261,21 @@ function formatStatus(status) {
 }
 
 .ack-btn {
-  padding: 4px 12px;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-primary);
+  padding: 4px 10px;
+  border: 1px solid rgba(111, 158, 172, 0.48);
+  border-radius: 2px;
+  background: rgba(111, 158, 172, 0.1);
+  color: #c9dde2;
   font-size: 12px;
+  font-weight: 900;
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 100%, 0 100%);
 }
 
 .ack-btn:hover:not(:disabled) {
-  background: var(--color-primary);
-  color: var(--color-surface);
+  background: rgba(111, 158, 172, 0.2);
+  color: #f2f5f7;
 }
 
 .ack-btn:disabled {
@@ -258,25 +285,32 @@ function formatStatus(status) {
 
 .status-tag {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: #8e9aa6;
 }
 
 .status-tag--acknowledged {
-  color: var(--color-warning);
+  color: #c3a06d;
 }
 
 .status-tag--resolved {
-  color: var(--color-success);
+  color: #8ab49f;
 }
 
 .alert-table__retry {
   margin-top: var(--spacing-xs);
   padding: 6px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  font-size: 13px;
+  border: 1px solid rgba(111, 158, 172, 0.48);
+  border-radius: 2px;
+  background: rgba(111, 158, 172, 0.1);
+  color: #c9dde2;
+  font-size: 12px;
+  font-weight: 900;
   cursor: pointer;
+}
+
+.alert-table__retry:hover {
+  background: rgba(111, 158, 172, 0.18);
+  color: #f2f5f7;
 }
 
 .skeleton-row td {
@@ -286,12 +320,12 @@ function formatStatus(status) {
 .skeleton-block {
   display: block;
   height: 14px;
-  border-radius: var(--radius-sm);
+  border-radius: 2px;
   background: linear-gradient(
     90deg,
-    var(--color-bg) 25%,
-    var(--color-border) 50%,
-    var(--color-bg) 75%
+    rgba(185, 196, 207, 0.08) 25%,
+    rgba(185, 196, 207, 0.18) 50%,
+    rgba(185, 196, 207, 0.08) 75%
   );
   background-size: 200% 100%;
   animation: alert-table-shimmer 1.2s ease-in-out infinite;
