@@ -16,16 +16,22 @@
         <router-view />
       </main>
     </div>
+    <ToastContainer />
   </div>
 </template>
 
 <script setup>
 import { provideTimeRange } from '../composables/useTimeRange.js'
+import { provideTheme } from '../composables/useTheme.js'
+import { provideToast } from '../composables/useToast.js'
 import SidebarTree from './components/SidebarTree.vue'
 import TopBar from './components/TopBar.vue'
 import PipelineHealthDot from './components/PipelineHealthDot.vue'
+import ToastContainer from '../components/common/ToastContainer.vue'
 
 provideTimeRange()
+provideTheme()
+provideToast()
 </script>
 
 <style scoped>
@@ -78,6 +84,16 @@ provideTimeRange()
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(245, 247, 251, 0)),
+    var(--color-bg);
+}
+
+/* Dark mode content gradient override */
+[data-theme="dark"] .content {
+  background:
+    linear-gradient(180deg, rgba(37, 99, 235, 0.04), transparent 24%),
+    var(--color-bg);
 }
 .main {
   flex: 1;

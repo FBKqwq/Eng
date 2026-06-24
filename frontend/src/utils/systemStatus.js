@@ -153,12 +153,12 @@ const resolveKafkaHealth = (status) => {
   const containerRunning = isContainerRunning(status, 'kafka')
 
   let internal = 'unknown'
-  if (kafka.available === true && containerRunning) {
+  if (kafka.available === true) {
     internal = 'running'
+  } else if (containerRunning) {
+    internal = 'pending'
   } else if (kafka.available === false && !containerRunning) {
     internal = 'down'
-  } else if (kafka.available === true || containerRunning) {
-    internal = 'pending'
   } else {
     internal = normalizeStatus(container.status)
   }

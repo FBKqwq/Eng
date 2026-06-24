@@ -3,9 +3,9 @@
     <!-- 页头 -->
     <header class="page-header">
       <div class="page-header__main">
-        <h2 class="page-header__title">Goulingming 日志检索</h2>
+        <h2 class="page-header__title">业务日志全文检索</h2>
         <p class="page-header__desc">
-          基于 Goulingming 业务域的日志全文检索，支持时间窗联动、筛选与钻取。
+          基于业务域的日志全文检索，支持时间窗联动、筛选与钻取。
         </p>
       </div>
       <dl class="page-header__stats">
@@ -86,8 +86,8 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import DynamicFilterBar from '../../../components/monitor/DynamicFilterBar.vue'
 import LogTable from '../../../components/common/LogTable.vue'
 import { useGoulingmingLogSearch } from '../../../composables/useGoulingmingLogSearch.js'
@@ -95,10 +95,11 @@ import { useTimeRange } from '../../../composables/useTimeRange.js'
 import { buildActiveFilterChips } from '../../../utils/logQueryContract.js'
 import { formatNumber } from '../../../utils/format.js'
 
+const route = useRoute()
 const router = useRouter()
 const FILTER_DEBOUNCE_MS = 300
 
-const { preset, range, presets } = useTimeRange()
+const { preset, range, presets, setCustomRange } = useTimeRange()
 
 const {
   loading,
@@ -153,6 +154,28 @@ const tookLabel = computed(() => {
 })
 
 let filterDebounceTimer = null
+
+/** 解析来自业务漏斗/其他页面的预设 query，跳过未提供的字段 */
+function applyRouteQuery() {
+  const q = route.query || {}
+  if (typeof q.keyword === 'string' && q.keyword) {
+    draftKeyword.value = q.keyword
+  }
+  const from = Number(q.from)
+  const to = Number(q.to)
+  if (Number.isFinite(from) && Number.isFinite(to) && to > from) {
+    setCustomRange(from, to)
+  }
+}
+
+onMounted(() => {
+  applyRouteQuery()
+  // 同步到搜索 composable，立刻触发一次查询
+  setFilters(draftFilters.value)
+  keyword.value = draftKeyword.value
+  page.value = 1
+  fetch()
+})
 
 function scheduleFilterFetch() {
   if (filterDebounceTimer != null) clearTimeout(filterDebounceTimer)

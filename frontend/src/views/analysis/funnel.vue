@@ -24,6 +24,38 @@
     </div>
 
     <template v-if="activeTab === 'main' || !compareTabReady">
+      <!-- 三维漏斗 + 分析洞察 -->
+      <div class="funnel-page__layout">
+        <!-- 三维漏斗可视化（左侧） -->
+        <section class="page-section funnel-page__chart">
+          <header class="funnel-chart-header">
+            <h2>转化漏斗</h2>
+            <span v-if="isMock" class="mock-badge">演示数据</span>
+          </header>
+          <Funnel3DSurface
+            :data="funnelLayers"
+            :loading="loading"
+            height="300px"
+          />
+          <FunnelChart
+            :data="funnelLayers"
+            :loading="loading"
+            height="0px"
+            placeholder=""
+            style="display:none"
+          />
+        </section>
+
+        <!-- 分析洞察（右侧） -->
+        <section class="page-section funnel-page__analysis">
+          <FunnelAnalysisPanel
+            :funnel-data="data"
+            :loading="loading"
+          />
+        </section>
+      </div>
+
+      <!-- 步骤详情列表 -->
       <FunnelMain @select-step="selectedStep = $event" />
       <LossLocator :selected-step="selectedStep" />
     </template>
@@ -54,7 +86,7 @@
             :data="currentChartData"
             :loading="compareLoading"
             height="300px"
-            placeholder="当前窗口漏斗：等待 behavior_funnel 聚合"
+            placeholder="等待对比数据"
           />
         </div>
         <div class="funnel-compare__panel">
@@ -63,7 +95,7 @@
             :data="baselineChartData"
             :loading="compareLoading"
             height="300px"
-            placeholder="对比窗口漏斗：等待 behavior_funnel 聚合"
+            placeholder="等待对比数据"
           />
         </div>
       </div>
@@ -74,20 +106,18 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useTimeRange } from '../../composables/useTimeRange.js'
+import { useMetrics } from '../../composables/useMetrics.js'
 import { queryBehaviorFunnel } from '../../api/metrics.js'
 import FunnelMain from '../../components/analysis-funnel/FunnelMain.vue'
 import LossLocator from '../../components/analysis-funnel/LossLocator.vue'
 import FunnelChart from '../../components/common/charts/FunnelChart.vue'
+import Funnel3DSurface from '../../components/common/charts/Funnel3DSurface.vue'
+import FunnelAnalysisPanel from '../../components/analysis-funnel/FunnelAnalysisPanel.vue'
 import EmptyState from '../../components/common/EmptyState.vue'
 import { formatTime } from '../../utils/format.js'
 
-/**
- * 双窗口对比 REST / es_compare_time_windows 前端封装未就绪前保持 false。
- * 就绪后改为 true，对比 tab 将展示双漏斗并排（当前窗 vs 上一等长窗口）。
- */
 const COMPARE_TAB_READY = false
 
-/** 五步漏斗顺序（对齐 FunnelMain / field_catalog.funnel_steps） */
 const FUNNEL_STEPS = [
   { key: 'page_view', label: '页面浏览' },
   { key: 'product_click', label: '商品点击' },
@@ -96,12 +126,16 @@ const FUNNEL_STEPS = [
   { key: 'pay_button_click', label: '支付点击' }
 ]
 
-/** 注入全局时间窗，子组件 useMetrics 自动联动 */
+const DROPOUT_WARNING = 0.35
+const DROPOUT_DANGER = 0.55
+
 const { range } = useTimeRange()
 
 const compareTabReady = COMPARE_TAB_READY
 const activeTab = ref('main')
 const selectedStep = ref('')
+
+const { data, loading, isMock } = useMetrics({ template: 'behavior_funnel' })
 
 const compareLoading = ref(false)
 const compareError = ref(null)
@@ -111,40 +145,58 @@ const baselineBuckets = ref(null)
 const baselineRange = computed(() => {
   const { start, end } = range.value
   const duration = Math.max(0, end - start)
-  return {
-    start: start - duration,
-    end: start
-  }
+  return { start: start - duration, end: start }
 })
 
-function bucketsToChartData(buckets) {
-  const bucketMap = new Map((buckets ?? []).map((bucket) => [bucket.key, bucket]))
+const funnelLayers = computed(() => {
+  const buckets = new Map((data.value?.buckets ?? []).map((b) => [b.key, b]))
+  return FUNNEL_STEPS.map((step, index) => {
+    const bucket = buckets.get(step.key) ?? { count: 0 }
+    const count = Number(bucket.count ?? 0)
+    let conversionRate = null
+    if (index > 0) {
+      const prevCount = Number(buckets.get(FUNNEL_STEPS[index - 1].key)?.count ?? 0)
+      if (prevCount > 0) conversionRate = `${((count / prevCount) * 100).toFixed(1)}%`
+    }
+    let dropoutRate = null
+    let tone = 'normal'
+    if (index > 0 && conversionRate) {
+      const rate = parseFloat(conversionRate) / 100
+      dropoutRate = `${((1 - rate) * 100).toFixed(1)}%`
+      if (1 - rate >= DROPOUT_DANGER) tone = 'danger'
+      else if (1 - rate >= DROPOUT_WARNING) tone = 'warning'
+    }
+    return { ...step, count, conversionRate, dropoutRate, tone }
+  })
+})
+
+const currentChartData = computed(() =>
+  funnelLayers.value.map((step) => ({
+    name: step.label,
+    value: step.count,
+    itemStyle: {
+      color: step.tone === 'danger' ? '#dc2626' : step.tone === 'warning' ? '#d97706' : '#3b82f6'
+    }
+  }))
+)
+
+const baselineChartData = computed(() => {
+  if (!baselineBuckets.value) return []
+  const bucketMap = new Map(baselineBuckets.value.map((b) => [b.key, b]))
   return FUNNEL_STEPS.map((step) => ({
     name: step.label,
     value: Number(bucketMap.get(step.key)?.count ?? 0)
   }))
-}
-
-const currentChartData = computed(() => bucketsToChartData(currentBuckets.value))
-const baselineChartData = computed(() => bucketsToChartData(baselineBuckets.value))
-
-function buildPayload(windowRange) {
-  return {
-    start_time: new Date(windowRange.start).toISOString(),
-    end_time: new Date(windowRange.end).toISOString()
-  }
-}
+})
 
 async function loadCompareData() {
   if (!compareTabReady || activeTab.value !== 'compare') return
-
   compareLoading.value = true
   compareError.value = null
-
   try {
     const [currentRes, baselineRes] = await Promise.all([
-      queryBehaviorFunnel(buildPayload(range.value)),
-      queryBehaviorFunnel(buildPayload(baselineRange.value))
+      queryBehaviorFunnel({ start_time: new Date(range.value.start).toISOString(), end_time: new Date(range.value.end).toISOString() }),
+      queryBehaviorFunnel({ start_time: new Date(baselineRange.value.start).toISOString(), end_time: new Date(baselineRange.value.end).toISOString() })
     ])
     currentBuckets.value = currentRes?.data?.buckets ?? []
     baselineBuckets.value = baselineRes?.data?.buckets ?? []
@@ -159,11 +211,7 @@ async function loadCompareData() {
 
 watch(
   [activeTab, range],
-  () => {
-    if (compareTabReady && activeTab.value === 'compare') {
-      loadCompareData()
-    }
-  },
+  () => { if (compareTabReady && activeTab.value === 'compare') loadCompareData() },
   { immediate: true }
 )
 </script>
@@ -175,8 +223,42 @@ watch(
   gap: var(--spacing-md);
 }
 
-.funnel-page :deep(.page-section) {
+.funnel-page .page-section {
   margin-bottom: 0;
+}
+
+.funnel-page__layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: var(--spacing-md);
+  align-items: start;
+}
+
+.funnel-page__chart {
+  overflow: hidden;
+}
+
+.funnel-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.funnel-chart-header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.mock-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .funnel-tabs {
@@ -193,12 +275,8 @@ watch(
   background: var(--color-bg);
   color: var(--color-text-secondary);
   font-size: 13px;
-  line-height: 1.3;
   cursor: pointer;
-  transition:
-    border-color 0.15s ease-out,
-    color 0.15s ease-out,
-    background 0.15s ease-out;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 
 .funnel-tab.active {
@@ -251,6 +329,10 @@ watch(
 }
 
 @media (max-width: 960px) {
+  .funnel-page__layout {
+    grid-template-columns: 1fr;
+  }
+
   .funnel-compare__grid {
     grid-template-columns: 1fr;
   }

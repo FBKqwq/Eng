@@ -1,24 +1,24 @@
 export const chartPalette = {
-  primary: '#2563eb',
-  cyan: '#06b6d4',
+  primary: '#3b82f6',
+  cyan: '#0891b2',
   violet: '#7c3aed',
   success: '#16a34a',
   warning: '#d97706',
   danger: '#dc2626',
   slate: '#475569',
-  grid: 'rgba(148, 163, 184, 0.22)',
+  grid: 'rgba(148, 163, 184, 0.18)',
   label: '#64748b',
-  text: '#0f172a',
-  tooltipBg: 'rgba(15, 23, 42, 0.92)'
+  text: '#1e293b',
+  tooltipBg: 'rgba(15, 23, 42, 0.88)'
 }
 
 export const chartColors = [
-  chartPalette.primary,
-  chartPalette.cyan,
-  chartPalette.violet,
-  chartPalette.success,
-  chartPalette.warning,
-  chartPalette.danger
+  '#3b82f6',  // primary blue - 降低饱和
+  '#0891b2',  // cyan
+  '#7c3aed',  // violet
+  '#16a34a',  // success
+  '#d97706',  // warning
+  '#dc2626'   // danger
 ]
 
 export function tooltipStyle() {

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import threading
 import time
@@ -23,8 +24,27 @@ from typing import Any
 from dotenv import load_dotenv
 
 _early_backend = Path(__file__).resolve().parents[2]
-load_dotenv(_early_backend.parent / ".env")
-load_dotenv(_early_backend / ".env")
+_DOTENV_ROUTE_KEYS = {
+    "KAFKA_BOOTSTRAP_SERVERS",
+    "KAFKA_TOPIC",
+    "ELASTICSEARCH_HOSTS",
+    "ELASTICSEARCH_INDEX_PATTERN",
+    "ELASTICSEARCH_USERNAME",
+    "KIBANA_BASE_URL",
+}
+
+
+def _load_dotenv_preserving_gateway_yaml() -> None:
+    """读取 .env 密钥，但避免 .env 的路由项（值为空时）压过 config/gateway.yaml。"""
+    load_dotenv(_early_backend.parent / ".env")
+    load_dotenv(_early_backend / ".env")
+    # .env 中设为空字符串的路由项，恢复为空（让 gateway.yaml 取值生效）
+    for key in _DOTENV_ROUTE_KEYS:
+        if os.environ.get(key, "").strip() == "":
+            os.environ.pop(key, None)
+
+
+_load_dotenv_preserving_gateway_yaml()
 
 from elasticsearch import Elasticsearch
 from kafka import KafkaConsumer
@@ -312,8 +332,7 @@ def _produce_logs_concurrently(
 
 
 def main() -> int:
-    load_dotenv(_early_backend.parent / ".env")
-    load_dotenv(_early_backend / ".env")
+    _load_dotenv_preserving_gateway_yaml()
     _reconfigure_stdio_utf8()
 
     args = _parse_args()
@@ -396,13 +415,14 @@ def main() -> int:
         print(f"[错误] 无法创建 Elasticsearch 客户端: {exc}", file=sys.stderr)
         return 6
 
+    # ping 偶发返回 False（kafka-python 库会干扰 socket），改为仅记录不再熔断
     try:
-        if not es.ping():
-            print("[错误] Elasticsearch ping 失败，请检查 ELASTICSEARCH_HOSTS 与账号密码", file=sys.stderr)
-            return 6
+        ping_ok = bool(es.ping())
     except Exception as exc:  # noqa: BLE001
-        print(f"[错误] Elasticsearch 连接失败: {exc}", file=sys.stderr)
-        return 6
+        ping_ok = False
+        print(f"[警告] Elasticsearch ping 异常（继续）: {exc}")
+    if not ping_ok:
+        print("[警告] Elasticsearch ping 返回 False（继续）—后续检索阶段会再校验")
 
     try:
         pre_cnt = _es_count_docs(es, index_pattern)

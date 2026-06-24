@@ -25,7 +25,6 @@ export const menuTree = [
       { title: '异常诊断中心', path: '/analysis/diagnosis' },
       { title: '分析轨迹', path: '/analysis/langgraph-history' },
       { title: '周期体检报告', path: '/analysis/reports' },
-      { title: '预警中心', path: '/analysis/alerts' },
       { title: '调用链路追踪', path: '/analysis/trace' },
       { title: '业务漏斗洞察', path: '/analysis/funnel' }
     ]
@@ -36,9 +35,18 @@ export const menuTree = [
     children: [
       { title: '链路健康与验证', path: '/system/pipeline' },
       { title: '组件运行状态', path: '/system/components' },
-      { title: '配置快照', path: '/system/config' },
-      { title: 'Goulingming 统计', path: '/goulingming/stat' },
-      { title: 'Goulingming 日志检索', path: '/goulingming/log-search' }
+      { title: '配置快照', path: '/system/config' }
+    ]
+  },
+  {
+    title: 'Goulingming',
+    icon: 'analysis',
+    children: [
+      { title: '预警中心', path: '/analysis/alerts' },
+      { title: '业务监控看板', path: '/goulingming/stat' },
+      { title: '业务日志全文检索', path: '/goulingming/log-search' },
+      { title: '业务用户旅程漏斗', path: '/goulingming/journey' },
+      { title: '业务健康体检报告', path: '/goulingming/health-report' }
     ]
   }
 ]

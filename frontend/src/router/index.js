@@ -19,6 +19,8 @@ import SystemComponents from '../views/system/components.vue'
 import SystemConfig from '../views/system/config.vue'
 import GoulingmingStat from '../views/goulingming/stat/index.vue'
 import GoulingmingLogSearch from '../views/goulingming/log-search/index.vue'
+import GoulingmingJourney from '../views/goulingming/journey/index.vue'
+import GoulingmingHealthReport from '../views/goulingming/health-report/index.vue'
 
 const routes = [
   {
@@ -133,13 +135,25 @@ const routes = [
         path: 'goulingming/stat',
         name: 'goulingming-stat',
         component: GoulingmingStat,
-        meta: { title: 'Goulingming 统计看板' }
+        meta: { title: '业务监控看板' }
       },
       {
         path: 'goulingming/log-search',
         name: 'goulingming-log-search',
         component: GoulingmingLogSearch,
-        meta: { title: 'Goulingming 日志检索' }
+        meta: { title: '业务日志全文检索' }
+      },
+      {
+        path: 'goulingming/journey',
+        name: 'goulingming-journey',
+        component: GoulingmingJourney,
+        meta: { title: '业务用户旅程漏斗' }
+      },
+      {
+        path: 'goulingming/health-report',
+        name: 'goulingming-health-report',
+        component: GoulingmingHealthReport,
+        meta: { title: '业务健康体检报告' }
       },
       // 旧路由重定向
       { path: 'diagnosis', redirect: '/analysis/diagnosis' },

@@ -25,18 +25,21 @@
         :series="trafficSeries"
         :loading="chartsLoading"
         title="请求量趋势"
+        :is-demo="USE_MOCK"
       />
       <ErrorTrendChart
         :categories="errorCategories"
         :series="errorSeries"
         :loading="chartsLoading"
         title="错误率趋势"
+        :is-demo="USE_MOCK"
       />
       <LatencyChart
         :categories="latencyCategories"
         :series="latencySeries"
         :loading="chartsLoading"
         title="延迟分布"
+        :is-demo="USE_MOCK"
       />
     </section>
 
@@ -64,7 +67,7 @@ import ServiceStatusList from './components/ServiceStatusList.vue'
 import TrafficTrendChart from './components/TrafficTrendChart.vue'
 import ErrorTrendChart from './components/ErrorTrendChart.vue'
 import LatencyChart from './components/LatencyChart.vue'
-import { getGoulingmingStats, getServiceStatus, getTrafficTrend, getErrorTrend, getLatencyDistribution } from '../../../api/goulingming.js'
+import { getGoulingmingStats, getServiceStatus, getTrafficTrend, getErrorTrend, getLatencyDistribution, USE_MOCK } from '../../../api/goulingming.js'
 import { formatTime } from '../../../utils/format.js'
 
 const range = inject('timeRange', { start: Date.now() - 3600_000, end: Date.now() })

@@ -35,6 +35,7 @@ _GATEWAY_FIELD_MAP: dict[str, tuple[str, str]] = {
     "elasticsearch_username": ("ELASTICSEARCH_USERNAME", "elasticsearch_username"),
     "elasticsearch_password": ("ELASTICSEARCH_PASSWORD", "elasticsearch_password"),
     "kibana_base_url": ("KIBANA_BASE_URL", "kibana_base_url"),
+    "logstash_hosts": ("LOGSTASH_HOSTS", "logstash_hosts"),
 }
 
 
@@ -86,10 +87,12 @@ def _load_gateway_yaml() -> dict[str, Any]:
     kafka = raw.get("kafka", {})
     elasticsearch = raw.get("elasticsearch", {})
     kibana = raw.get("kibana", {})
+    logstash = raw.get("logstash", {})
 
     kafka_section = kafka if isinstance(kafka, dict) else {}
     es_section = elasticsearch if isinstance(elasticsearch, dict) else {}
     kibana_section = kibana if isinstance(kibana, dict) else {}
+    logstash_section = logstash if isinstance(logstash, dict) else {}
 
     kafka_port = kafka_section.get("port", 9092)
     es_scheme = _first_non_empty(es_section.get("scheme"), "http") or "http"
@@ -107,6 +110,10 @@ def _load_gateway_yaml() -> dict[str, Any]:
     if not kibana_base:
         kibana_base = f"http://{host}:5601"
 
+    logstash_hosts = _first_non_empty(logstash_section.get("hosts"))
+    if not logstash_hosts:
+        logstash_hosts = f"http://{host}:9600"
+
     flat: dict[str, Any] = {
         "kafka_bootstrap_servers": kafka_bootstrap,
         "kafka_topic": kafka_section.get("topic", "app-logs"),
@@ -114,6 +121,7 @@ def _load_gateway_yaml() -> dict[str, Any]:
         "elasticsearch_index_pattern": es_section.get("index_pattern", "app-logs-*"),
         "elasticsearch_username": es_section.get("username", "elastic"),
         "kibana_base_url": kibana_base,
+        "logstash_hosts": logstash_hosts,
     }
     es_password = _first_non_empty(es_section.get("password"))
     if es_password:
@@ -183,6 +191,8 @@ class Settings(BaseSettings):
         ),
     )
     kibana_base_url: str = "http://localhost:5601"
+
+    logstash_hosts: str = "http://localhost:9600"
 
     docker_project_name: str = "location"
     docker_monitored_services: str = "kafka,elasticsearch,logstash,kibana,setup"

@@ -20,7 +20,10 @@ def get_es_client() -> Elasticsearch:
         (os.environ.get("ELASTICSEARCH_USERNAME") or "").strip()
         or (settings.elasticsearch_username or "elastic").strip()
     )
-    raw_pw = (os.environ.get("ELASTICSEARCH_PASSWORD") or os.environ.get("ELASTIC_PASSWORD") or "").strip()
+    raw_pw = (
+        (os.environ.get("ELASTICSEARCH_PASSWORD") or "").strip()
+        or (os.environ.get("ELASTIC_PASSWORD") or "").strip()
+    ).strip()
     if not raw_pw:
         raw_pw = (settings.elasticsearch_password or "").strip()
     password = _strip_credential_quotes(raw_pw)
