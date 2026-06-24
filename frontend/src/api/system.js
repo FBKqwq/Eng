@@ -3,6 +3,9 @@ import request from './request'
 /** 全链路验证长超时（毫秒），对齐后端脚本耗时 */
 const PIPELINE_VERIFY_TIMEOUT_MS = 210000
 
+/** 系统状态探活超时（毫秒）：要探 Kafka + ES + Docker 三个外部依赖，留足缓冲 */
+const SYSTEM_STATUS_TIMEOUT_MS = 30000
+
 /** 全链路验证默认参数（与旧 system/index.vue、后端 PipelineVerifyRequest 对齐） */
 const DEFAULT_VERIFY_COUNT = 4
 const DEFAULT_VERIFY_WORKERS = 2
@@ -35,7 +38,8 @@ export const getApiHealth = getHealth
  * 禁止依赖顶层 available / placeholder（已废弃）；改读 kafka.available /
  * elasticsearch.available / docker.available。失败：catch (e) { e.error?.code }
  */
-export const getSystemStatus = () => request.get('/system/status')
+export const getSystemStatus = () =>
+  request.get('/system/status', { timeout: SYSTEM_STATUS_TIMEOUT_MS })
 
 /**
  * Docker 容器状态 → GET /system/containers

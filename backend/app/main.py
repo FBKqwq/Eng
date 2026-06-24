@@ -34,6 +34,11 @@ def create_app() -> FastAPI:
             "env": settings.app_env,
         }
 
+    @app.get("/health")
+    def liveness() -> dict:
+        """Liveness 探针：不依赖任何外部依赖，进程存活即返回 ok。"""
+        return {"status": "ok"}
+
     return app
 
 

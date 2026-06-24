@@ -12,7 +12,31 @@ const request = axios.create({
  *
  * 422 校验失败：FastAPI 返回 { detail: [...] }，不走业务信封，保持 axios 默认结构。
  * 页面 catch：422 读 e.response.data.detail；业务错误读 e.error?.code。
+ *
+ * 网络/超时错误会被翻成中文友好提示（带可能原因），方便值班快速定位。
  */
+const NETWORK_ERROR_HINT =
+  '请确认后端服务（默认 8000 端口）、Kafka、Elasticsearch、Docker 是否都处于运行状态。'
+
+function describeNetworkError(error) {
+  if (!error) return '请求失败'
+  if (error.code === 'ECONNABORTED') {
+    return `请求超时（${error.message}）。${NETWORK_ERROR_HINT}`
+  }
+  if (error.message === 'Network Error') {
+    return `无法连接后端服务。${NETWORK_ERROR_HINT}`
+  }
+  if (error.response) {
+    const status = error.response.status
+    if (status === 404) return '接口不存在（404），请确认后端路由版本是否一致。'
+    if (status === 502 || status === 503 || status === 504) {
+      return `后端网关不可用（${status}）。${NETWORK_ERROR_HINT}`
+    }
+    return `请求失败（HTTP ${status}）`
+  }
+  return error.message || '请求失败'
+}
+
 request.interceptors.response.use(
   (response) => {
     const body = response.data
@@ -29,7 +53,13 @@ request.interceptors.response.use(
     }
     return response
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    const wrapped = new Error(describeNetworkError(error))
+    wrapped.cause = error
+    wrapped.code = error?.code
+    wrapped.response = error?.response
+    return Promise.reject(wrapped)
+  }
 )
 
 export default request
