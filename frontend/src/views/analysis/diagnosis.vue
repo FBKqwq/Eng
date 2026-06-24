@@ -35,7 +35,18 @@
     <div class="diagnosis-page__cluster-section">
       <div class="cluster-section__header">
         <h2>规则子图诊断全景</h2>
-        <span class="section-badge">实时更新</span>
+        <div class="cluster-section__actions">
+          <button
+            type="button"
+            class="export-btn"
+            :disabled="!diagnosisResult"
+            @click="handleExportReport"
+          >
+            <span class="export-btn__icon">📥</span>
+            <span>导出诊断报告</span>
+          </button>
+          <span class="section-badge">实时更新</span>
+        </div>
       </div>
       <div class="cluster-grid">
         <div class="cluster-card">
@@ -424,6 +435,30 @@ async function loadAlerts() {
   }
 }
 
+function handleExportReport() {
+  if (!diagnosisResult.value) return
+  
+  const reportData = {
+    exportTime: new Date().toISOString(),
+    diagnosis: diagnosisResult.value,
+    ruleStats: ruleStats.value,
+    nodeTrace: nodeTrace.value
+  }
+  
+  const blob = new Blob([JSON.stringify(reportData, null, 2)], {
+    type: 'application/json'
+  })
+  
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `diagnosis-report-${Date.now()}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 onMounted(() => {
   loadAlerts()
 })
@@ -468,6 +503,7 @@ onMounted(() => {
 .cluster-section__header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: var(--spacing-md);
 }
@@ -477,6 +513,41 @@ onMounted(() => {
   font-size: 15px;
   font-weight: 700;
   color: var(--industrial-dark-gray);
+}
+
+.cluster-section__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--industrial-border-color);
+  border-radius: 0;
+  background: var(--industrial-white);
+  color: var(--industrial-dark-gray);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.export-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.export-btn__icon {
+  font-size: 14px;
 }
 
 .section-badge {
