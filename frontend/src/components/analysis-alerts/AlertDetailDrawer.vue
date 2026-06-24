@@ -61,14 +61,30 @@
               </p>
             </section>
 
-            <section v-if="reportLink" class="report-section">
+            <section v-if="reportLink || relatedReports?.length" class="report-section">
               <h4>关联报告</h4>
-              <router-link :to="reportPath" class="report-link">
-                {{ reportLink.title || '查看周期体检报告' }}
-              </router-link>
+              <div v-if="reportLink" class="report-link-wrapper">
+                <router-link :to="reportPath" class="report-link">
+                  {{ reportLink.title || '查看周期体检报告' }}
+                </router-link>
+              </div>
+              <div v-if="relatedReports?.length" class="related-reports">
+                <div
+                  v-for="report in relatedReports.slice(0, 3)"
+                  :key="report.report_id"
+                  class="related-report-item"
+                  @click="$emit('view-report', report.report_id)"
+                >
+                  <span class="related-report__type">{{ report.report_type === 'periodic' ? '周期体检' : '事件诊断' }}</span>
+                  <span class="related-report__title">{{ report.title }}</span>
+                </div>
+              </div>
             </section>
 
             <footer class="alert-drawer__footer">
+              <button type="button" class="trace-btn" @click="handleViewTrace">
+                查看调用链路
+              </button>
               <button type="button" class="diagnosis-btn" @click="handleDiagnose">
                 发起深度诊断
               </button>
@@ -94,10 +110,12 @@ const props = defineProps({
   /** [{ id, summary, timestamp }] */
   evidences: { type: Array, default: () => [] },
   /** { reportId, title } */
-  reportLink: { type: Object, default: null }
+  reportLink: { type: Object, default: null },
+  /** 关联的周期报告列表 */
+  relatedReports: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['close', 'diagnose'])
+const emit = defineEmits(['close', 'diagnose', 'view-report', 'view-trace'])
 
 const SEVERITY_LABELS = {
   low: '低',
@@ -197,6 +215,11 @@ function formatSeverity(level) {
 function handleDiagnose() {
   if (!props.alert?.alert_id) return
   emit('diagnose', props.alert.alert_id)
+}
+
+function handleViewTrace() {
+  if (!props.alert?.alert_id) return
+  emit('view-trace', props.alert.alert_id)
 }
 </script>
 
@@ -340,6 +363,10 @@ function handleDiagnose() {
   color: var(--color-text-muted);
 }
 
+.report-link-wrapper {
+  margin-bottom: var(--spacing-sm);
+}
+
 .report-link {
   font-size: 13px;
   color: var(--color-primary);
@@ -350,13 +377,67 @@ function handleDiagnose() {
   text-decoration: underline;
 }
 
+.related-reports {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.related-report-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.related-report-item:hover {
+  background: var(--color-info-bg);
+}
+
+.related-report__type {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-surface);
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.related-report__title {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
 .alert-drawer__footer {
+  display: flex;
+  gap: var(--spacing-sm);
   margin-top: auto;
   padding-top: var(--spacing-md);
 }
 
+.trace-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.trace-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 .diagnosis-btn {
-  width: 100%;
+  flex: 1;
   padding: 10px 16px;
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);

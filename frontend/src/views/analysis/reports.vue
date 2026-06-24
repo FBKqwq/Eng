@@ -10,20 +10,22 @@
       description="智能分析尚未产出周期或事件报告，请稍后再查看"
     />
 
-    <div v-else class="reports-page__grid page-grid page-grid-2">
-      <ReportTimeline
-        :items="reportItems"
-        :selected-id="selectedReportId"
-        :loading="listLoading"
-        :error="listError"
-        @select="handleSelect"
-        @retry="loadRecentReports"
-      />
+    <div v-else class="reports-page__layout">
+      <div class="reports-page__timeline">
+        <ReportTimeline
+          :items="reportItems"
+          :selected-id="selectedReportId"
+          :loading="listLoading"
+          :error="listError"
+          @select="handleSelect"
+          @retry="loadRecentReports"
+        />
+      </div>
 
       <div class="reports-page__detail">
         <div
           v-if="detailError"
-          class="reports-page__status reports-page__status--error"
+          class="reports-page__status reports-page__status--error reports-page__status--full"
           role="alert"
         >
           <span>{{ detailError }}</span>
@@ -42,6 +44,27 @@
           <ReportRiskPanel :report="selectedReport" :loading="detailLoading" />
         </section>
         <section class="page-section">
+          <h2>报告统计</h2>
+          <div class="reports-page__stats">
+            <div class="stats-card">
+              <div class="stats-card__value">{{ reportStats.total }}</div>
+              <div class="stats-card__label">总报告数</div>
+            </div>
+            <div class="stats-card stats-card--high">
+              <div class="stats-card__value">{{ reportStats.highRisk }}</div>
+              <div class="stats-card__label">高风险报告</div>
+            </div>
+            <div class="stats-card stats-card--medium">
+              <div class="stats-card__value">{{ reportStats.mediumRisk }}</div>
+              <div class="stats-card__label">中风险报告</div>
+            </div>
+            <div class="stats-card stats-card--low">
+              <div class="stats-card__value">{{ reportStats.lowRisk }}</div>
+              <div class="stats-card__label">低风险报告</div>
+            </div>
+          </div>
+        </section>
+        <section class="page-section page-section--full">
           <h2>报告拆解</h2>
           <ReportSections :report="selectedReport" :loading="detailLoading" />
           <RelationInsightCard
@@ -77,6 +100,23 @@ const showMockBadge = computed(() => USE_MOCK === true)
 const showPageEmpty = computed(
   () => !listLoading.value && !listError.value && reportItems.value.length === 0
 )
+
+const reportStats = computed(() => {
+  const items = reportItems.value || []
+  const stats = {
+    total: items.length,
+    highRisk: 0,
+    mediumRisk: 0,
+    lowRisk: 0
+  }
+  items.forEach(item => {
+    const level = (item?.risk_level || '').toLowerCase()
+    if (level === 'high') stats.highRisk++
+    else if (level === 'low') stats.lowRisk++
+    else stats.mediumRisk++
+  })
+  return stats
+})
 
 const reportRelations = computed(() => {
   const report = selectedReport.value
@@ -185,15 +225,29 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-.reports-page__detail {
+.reports-page__layout {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  min-width: 0;
+  gap: var(--spacing-lg);
+}
+
+.reports-page__timeline {
+  width: 100%;
+}
+
+.reports-page__detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
 }
 
 .reports-page__detail .page-section {
   margin-bottom: 0;
+}
+
+.reports-page__status--full,
+.page-section--full {
+  grid-column: span 2;
 }
 
 .reports-page__status {
@@ -227,5 +281,44 @@ onMounted(() => {
 
 .retry-btn:hover {
   opacity: 0.85;
+}
+
+.reports-page__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.stats-card {
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  text-align: center;
+}
+
+.stats-card__value {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+}
+
+.stats-card__label {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.stats-card--high .stats-card__value {
+  color: var(--color-danger);
+}
+
+.stats-card--medium .stats-card__value {
+  color: var(--color-warning);
+}
+
+.stats-card--low .stats-card__value {
+  color: var(--color-success);
 }
 </style>

@@ -124,7 +124,7 @@ const flowNodes = computed(() =>
   stageState.value.map((stage, index) => ({
     id: stage.key,
     type: 'diagnostic',
-    position: { x: index * 168, y: index % 2 === 0 ? 20 : 104 },
+    position: { x: index * 180 + 30, y: 30 },
     data: {
       index: String(index + 1).padStart(2, '0'),
       label: stage.label,
@@ -159,14 +159,12 @@ const flowEdges = computed(() =>
 
 <style scoped>
 .langgraph-flow-card {
-  height: 320px;
-  padding: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background:
-    radial-gradient(circle at 12% 14%, rgba(37, 99, 235, 0.08), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
-  box-shadow: var(--shadow-card);
+  min-height: 340px;
+  padding: 12px;
+  border: var(--industrial-border-width) solid var(--industrial-border-color);
+  border-radius: 0;
+  background: var(--industrial-dark-gray);
+  box-shadow: none;
 }
 
 .langgraph-flow-card__header {
@@ -175,87 +173,164 @@ const flowEdges = computed(() =>
   justify-content: space-between;
   gap: var(--spacing-sm);
   margin-bottom: 8px;
+  padding: 12px 16px;
+  background: var(--industrial-dark-gray);
+  border-radius: 0;
+  position: relative;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--industrial-cut-size)) 0,
+    100% var(--industrial-cut-size),
+    100% 100%,
+    0 100%
+  );
+}
+
+.langgraph-flow-card__header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  background: var(--industrial-blue-cyan);
 }
 
 .langgraph-flow-card__eyebrow {
   margin: 0 0 2px;
-  color: var(--color-primary);
+  color: var(--industrial-blue-cyan);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
+  font-family: var(--font-mono);
 }
 
 .langgraph-flow-card__header h3 {
   margin: 0;
-  color: var(--color-text);
+  color: var(--industrial-white);
   font-size: 14px;
+  font-weight: 700;
 }
 
 .mode-badge {
   padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
+  border-radius: 0;
+  background: rgba(249, 115, 22, 0.08);
+  color: var(--industrial-orange);
   font-size: 11px;
   font-weight: 700;
+  border: 1px solid var(--industrial-orange);
 }
 
 .langgraph-flow {
-  height: 250px;
-  border-radius: var(--radius-sm);
+  min-height: 280px;
+  border-radius: 0;
   background:
-    linear-gradient(rgba(37, 99, 235, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px);
-  background-size: 24px 24px;
+    linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-color: rgba(30, 41, 59, 0.5);
 }
 
 .flow-node {
   min-width: 124px;
   padding: 10px 12px;
-  border: 1px solid rgba(37, 99, 235, 0.28);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+  border: 1px solid var(--industrial-border-color);
+  border-radius: 0;
+  background: var(--industrial-white);
+  position: relative;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--industrial-cut-size)) 0,
+    100% var(--industrial-cut-size),
+    100% 100%,
+    0 100%
+  );
 }
 
 .flow-node__index {
-  display: block;
-  color: var(--color-primary);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #475569;
+  color: var(--industrial-white);
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .flow-node strong {
   display: block;
   margin-top: 2px;
-  color: var(--color-text);
+  margin-left: 28px;
+  color: var(--industrial-dark-gray);
   font-size: 12px;
+  font-weight: 700;
 }
 
 .flow-node small {
   display: block;
   margin-top: 4px;
-  color: var(--color-text-secondary);
+  margin-left: 28px;
+  color: var(--industrial-medium-gray);
   font-size: 10px;
 }
 
 .flow-node--done {
-  border-color: rgba(22, 163, 74, 0.36);
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.flow-node--done .flow-node__index {
+  background: #64748b;
 }
 
 .flow-node--running {
-  border-color: rgba(37, 99, 235, 0.46);
-  box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.1), 0 10px 24px rgba(15, 23, 42, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.flow-node--running .flow-node__index {
+  background: #3b82f6;
+  animation: pulse 3s ease-in-out infinite;
 }
 
 .flow-node--error {
-  border-color: rgba(220, 38, 38, 0.46);
+  border-color: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1);
+}
+
+.flow-node--error .flow-node__index {
+  background: #dc2626;
 }
 
 .flow-node--skipped {
-  opacity: 0.72;
+  opacity: 0.55;
   border-style: dashed;
+}
+
+.flow-node--skipped .flow-node__index {
+  background: #64748b;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-node--running .flow-node__index {
+    animation: none;
+  }
 }
 </style>

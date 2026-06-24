@@ -46,10 +46,10 @@ const displayItems = computed(() =>
 
 <style scoped>
 .time-axis {
-  padding: var(--spacing-md);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  padding: var(--industrial-panel-padding);
+  border: var(--industrial-border-width) solid var(--industrial-border-color);
+  border-radius: 0;
+  background: var(--industrial-white);
 }
 
 .time-axis.is-placeholder .timeline-item {
@@ -79,8 +79,8 @@ const displayItems = computed(() =>
   left: 7px;
   top: 14px;
   bottom: 0;
-  width: 2px;
-  background: var(--color-border);
+  width: 1px;
+  background: var(--industrial-border-color);
 }
 
 .timeline-item:last-child .axis-line {
@@ -90,53 +90,79 @@ const displayItems = computed(() =>
 .dot {
   position: relative;
   z-index: 1;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   margin-top: 2px;
   border-radius: 50%;
-  background: var(--color-primary);
-  border: 2px solid var(--color-surface);
-  box-shadow: 0 0 0 1px var(--color-border);
+  background: var(--industrial-medium-gray);
+  border: 2px solid var(--industrial-white);
+  box-shadow: 0 0 0 1px var(--industrial-border-color);
 }
 
 .dot.tone-danger {
-  background: var(--color-danger);
+  background: var(--industrial-red);
+  box-shadow: var(--industrial-status-glow-red);
 }
 
 .dot.tone-warning {
-  background: var(--color-warning);
+  background: var(--industrial-orange);
+  box-shadow: var(--industrial-status-glow-orange);
+}
+
+.dot.tone-info {
+  background: var(--industrial-blue-cyan);
+  box-shadow: var(--industrial-status-glow-blue);
 }
 
 .content {
   min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--industrial-border-color);
+  border-radius: 0;
+  background: var(--industrial-white);
+  position: relative;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--industrial-cut-size)) 0,
+    100% var(--industrial-cut-size),
+    100% 100%,
+    0 100%
+  );
+  transition: border-color var(--transition-fast);
+}
+
+.content:hover {
+  border-color: var(--industrial-blue-cyan);
 }
 
 .time {
   display: block;
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--industrial-medium-gray);
+  font-family: var(--font-mono);
 }
 
 .label {
   margin: 2px 0 0;
   font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text);
+  font-weight: 700;
+  color: var(--industrial-dark-gray);
+  line-height: 1.4;
 }
 
 .detail {
   margin: 4px 0 0;
   font-size: 12px;
-  color: var(--color-text-secondary);
-  line-height: 1.4;
+  color: var(--industrial-medium-gray);
+  line-height: var(--industrial-line-height);
 }
 
 .placeholder-note {
   margin: var(--spacing-md) 0 0;
   padding-top: var(--spacing-sm);
-  border-top: 1px dashed var(--color-border);
+  border-top: 1px dashed var(--industrial-border-color);
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--industrial-medium-gray);
   text-align: center;
 }
 </style>

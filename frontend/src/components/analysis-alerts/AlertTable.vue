@@ -1,6 +1,16 @@
 <template>
   <section class="alert-table" aria-label="预警列表" :aria-busy="loading">
     <header class="alert-table__header">
+      <div class="alert-table__search">
+        <input
+          type="text"
+          v-model="searchQuery"
+          class="alert-table__search-input"
+          placeholder="搜索预警标题、服务名..."
+          @input="handleSearch"
+        />
+        <span class="alert-table__search-icon">🔍</span>
+      </div>
       <span v-if="total > 0" class="alert-table__meta tabular-nums">共 {{ formatNumber(total) }} 条</span>
     </header>
 
@@ -46,7 +56,7 @@
         </thead>
         <tbody>
           <tr
-            v-for="row in items"
+            v-for="row in filteredItems"
             :key="row.alert_id"
             class="alert-row"
             :class="{
@@ -87,11 +97,12 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import EmptyState from '../common/EmptyState.vue'
 import SeverityBadge from '../common/SeverityBadge.vue'
 import { formatTime, formatNumber } from '../../utils/format.js'
 
-defineProps({
+const props = defineProps({
   items: { type: Array, default: () => [] },
   total: { type: Number, default: 0 },
   loading: { type: Boolean, default: false },
@@ -100,7 +111,26 @@ defineProps({
   ackingId: { type: String, default: '' }
 })
 
-const emit = defineEmits(['select', 'ack', 'retry'])
+const emit = defineEmits(['select', 'ack', 'retry', 'search'])
+
+const searchQuery = ref('')
+
+const filteredItems = ref(props.items)
+
+function handleSearch() {
+  const query = searchQuery.value.toLowerCase().trim()
+  if (!query) {
+    filteredItems.value = props.items
+  } else {
+    filteredItems.value = props.items.filter(item => {
+      const title = (item.title || '').toLowerCase()
+      const service = (item.affected_service || '').toLowerCase()
+      const type = (item.alert_type || '').toLowerCase()
+      return title.includes(query) || service.includes(query) || type.includes(query)
+    })
+  }
+  emit('search', { query, count: filteredItems.value.length })
+}
 
 const columns = [
   { key: 'alert_type', label: '类型' },
@@ -161,7 +191,44 @@ function formatStatus(status) {
 
 .alert-table__header {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.alert-table__search {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.alert-table__search-input {
+  width: 240px;
+  padding: 6px 32px 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: 13px;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 120ms ease;
+}
+
+.alert-table__search-input:focus {
+  border-color: var(--color-primary);
+}
+
+.alert-table__search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.alert-table__search-icon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--color-text-muted);
+  pointer-events: none;
 }
 
 .alert-table__meta {

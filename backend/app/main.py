@@ -2,6 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.router import api_router
+from app.api.v1.ws import (
+    websocket_alerts,
+    websocket_logs,
+    websocket_system,
+    send_alert_message,
+    send_log_message,
+    send_system_message,
+)
 
 
 LOCAL_DEV_ORIGIN_REGEX = (
@@ -26,6 +34,11 @@ def create_app() -> FastAPI:
     )
     app.include_router(api_router, prefix="/api")
 
+    # WebSocket endpoints
+    app.add_api_websocket_route("/api/v1/ws/alerts", websocket_alerts)
+    app.add_api_websocket_route("/api/v1/ws/logs", websocket_logs)
+    app.add_api_websocket_route("/api/v1/ws/system", websocket_system)
+
     @app.get("/")
     def root() -> dict:
         return {
@@ -38,3 +51,6 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+# Export functions for sending messages
+__all__ = ["send_alert_message", "send_log_message", "send_system_message"]

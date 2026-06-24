@@ -159,11 +159,10 @@ const chartPlaceholder = computed(() => {
 }
 
 .topology-graph {
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
+  padding: var(--industrial-panel-padding);
+  border: var(--industrial-border-width) solid var(--industrial-border-color);
+  border-radius: 0;
+  background: var(--industrial-white);
   transition: border-color 0.3s ease, box-shadow 0.2s ease-out;
 }
 
@@ -181,12 +180,20 @@ const chartPlaceholder = computed(() => {
 
 .topology-node {
   padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
+  border-radius: 0;
+  border: 1px solid var(--industrial-border-color);
+  background: var(--industrial-light-gray);
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--industrial-dark-gray);
+  position: relative;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--industrial-cut-size)) 0,
+    100% var(--industrial-cut-size),
+    100% 100%,
+    0 100%
+  );
   transition:
     border-color 0.3s ease,
     color 0.3s ease,
@@ -195,29 +202,30 @@ const chartPlaceholder = computed(() => {
 }
 
 .topology-node.abnormal {
-  border-color: var(--color-danger);
-  color: var(--color-danger);
-  background: var(--color-danger-bg);
-  animation: pulse-abnormal 2s ease-in-out infinite;
+  border-color: #dc2626;
+  color: #991b1b;
+  background: rgba(220, 38, 38, 0.06);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1);
+  animation: pulse-abnormal 3s ease-in-out infinite;
 }
 
 .topology-edge {
   display: inline-flex;
   align-items: center;
   width: 28px;
-  color: var(--color-text-muted);
+  color: var(--industrial-medium-gray);
   opacity: 0.65;
   transition: color 0.3s ease, opacity 0.3s ease;
 }
 
 .topology-edge.edge-abnormal {
-  color: var(--color-danger);
+  color: var(--industrial-red);
   opacity: 0.85;
 }
 
 .edge-line {
   flex: 1;
-  height: 2px;
+  height: 1px;
   background: currentColor;
 }
 
@@ -230,7 +238,7 @@ const chartPlaceholder = computed(() => {
 .topology-note {
   margin: var(--spacing-sm) 0 0;
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--industrial-medium-gray);
   text-align: center;
 }
 
@@ -245,32 +253,34 @@ const chartPlaceholder = computed(() => {
   margin: 0;
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--industrial-dark-gray);
 }
 
 .burst-badge {
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-danger);
-  background: var(--color-danger-bg);
+  color: var(--industrial-red);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid var(--industrial-red);
 }
 
 .total-badge {
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: var(--industrial-medium-gray);
+  font-family: var(--font-mono);
 }
 
 @keyframes pulse-abnormal {
   0%,
   100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.2);
+    opacity: 0.95;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1);
   }
   50% {
-    opacity: 0.82;
-    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0);
+    opacity: 0.85;
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.05);
   }
 }
 

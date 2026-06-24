@@ -13,6 +13,7 @@
       @keydown.space.prevent="emitToggle"
     >
       <span class="chevron" :class="{ expanded: isExpanded }" aria-hidden="true">▸</span>
+      <span class="icon">{{ getIcon(item.icon) }}</span>
       <span class="title">{{ item.title }}</span>
     </div>
     <!-- 叶子节点：router-link 跳转 -->
@@ -23,6 +24,7 @@
       :class="{ active: isActive }"
       :style="{ paddingLeft: `${12 + depth * 16}px` }"
     >
+      <span class="icon">{{ getIcon(item.icon) }}</span>
       {{ item.title }}
     </router-link>
     <ul v-if="hasChildren && isExpanded" class="children" role="group">
@@ -57,6 +59,17 @@ const hasChildren = computed(() => Array.isArray(props.item.children) && props.i
 const isExpanded = computed(() => props.expandedGroups.has(props.item.title))
 const isActive = computed(() => props.item.path === route.path)
 
+const iconMap = {
+  dashboard: '📊',
+  monitor: '🔍',
+  analysis: '🧠',
+  system: '⚙️'
+}
+
+function getIcon(iconName) {
+  return iconMap[iconName] || '📄'
+}
+
 function emitToggle() {
   emit('toggle', props.item.title)
 }
@@ -70,7 +83,7 @@ function emitToggle() {
 .group-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin: 2px 8px;
   padding: 8px 10px;
   border-radius: var(--radius-sm);
@@ -82,6 +95,12 @@ function emitToggle() {
   transition:
     background var(--transition-fast),
     color var(--transition-fast);
+}
+
+.icon {
+  font-size: 16px;
+  width: 16px;
+  text-align: center;
 }
 
 .group-header:hover {
@@ -99,7 +118,9 @@ function emitToggle() {
 }
 
 .leaf-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 2px 8px;
   padding: 8px 10px;
   border-radius: var(--radius-sm);

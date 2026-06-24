@@ -177,21 +177,22 @@ const reasoningPoints = computed(() => {
   margin: 0 0 6px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--industrial-dark-gray);
 }
 
 .gauge-caption {
   margin: 4px 0 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--industrial-dark-gray);
   text-align: center;
+  font-family: var(--font-mono);
 }
 
 .gauge-caption--muted {
   font-weight: 500;
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--industrial-medium-gray);
 }
 
 .meta-row {
@@ -203,57 +204,70 @@ const reasoningPoints = computed(() => {
 
 .anomaly-badge {
   display: inline-block;
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
-  font-size: 16px;
+  padding: 6px 12px;
+  border-radius: 0;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.01em;
+  position: relative;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--industrial-cut-size)) 0,
+    100% var(--industrial-cut-size),
+    100% 100%,
+    0 100%
+  );
 }
 
 .anomaly-badge.tone-info {
-  background: var(--color-info-bg);
-  color: var(--color-info);
-  border: 1px solid var(--color-info);
+  background: rgba(14, 165, 233, 0.08);
+  color: #0369a1;
+  border: 1px solid rgba(14, 165, 233, 0.2);
 }
 
 .anomaly-badge.tone-warning {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-  border: 1px solid var(--color-warning);
+  background: rgba(249, 115, 22, 0.08);
+  color: #b45309;
+  border: 1px solid rgba(249, 115, 22, 0.2);
 }
 
 .anomaly-badge.tone-danger {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
-  border: 1px solid var(--color-danger);
+  background: rgba(220, 38, 38, 0.08);
+  color: #991b1b;
+  border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
 .service-tag {
   padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--industrial-light-gray);
+  border: 1px solid var(--industrial-border-color);
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: var(--industrial-dark-gray);
+  font-family: var(--font-mono);
 }
 
 .service-tag--muted {
-  color: var(--color-text-muted);
+  color: var(--industrial-medium-gray);
   border-style: dashed;
 }
 
 .root-cause-card {
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  border-left: 3px solid var(--color-primary);
+  padding: var(--industrial-panel-padding);
+  border: var(--industrial-border-width) solid var(--industrial-border-color);
+  border-radius: 0;
+  background: var(--industrial-white);
+  border-left: 3px solid var(--industrial-blue-cyan);
   transition: box-shadow 180ms ease;
 }
 
+.root-cause-card:hover {
+  border-color: var(--industrial-blue-cyan);
+}
+
 .root-cause-card--degraded {
-  border-left-color: var(--color-text-muted);
+  border-left-color: var(--industrial-medium-gray);
 }
 
 .root-cause-card__header {
@@ -268,24 +282,25 @@ const reasoningPoints = computed(() => {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
+  color: var(--industrial-dark-gray);
 }
 
 .rule-badge {
   flex-shrink: 0;
   padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--industrial-light-gray);
+  border: 1px solid var(--industrial-border-color);
   font-size: 11px;
   font-weight: 500;
-  color: var(--color-text-muted);
+  color: var(--industrial-medium-gray);
 }
 
 .root-cause-card__headline {
   margin: 0 0 var(--spacing-sm);
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--industrial-dark-gray);
   line-height: 1.5;
 }
 
@@ -293,14 +308,14 @@ const reasoningPoints = computed(() => {
   margin: 0;
   padding-left: 1.2em;
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--industrial-dark-gray);
   line-height: 1.6;
 }
 
 .root-cause-card__empty-points {
   margin: 0;
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--industrial-medium-gray);
 }
 
 @media (prefers-reduced-motion: reduce) {

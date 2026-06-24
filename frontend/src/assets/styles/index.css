@@ -62,6 +62,34 @@
   --transition-fast: 180ms ease-out;
   --transition-chart: 400ms ease-out;
   --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* 硬朗工业风色彩体系 - 低饱和度版本 */
+  --industrial-white: #fafafa;
+  --industrial-light-gray: #f1f5f9;
+  --industrial-medium-gray: #64748b;
+  --industrial-dark-gray: #0f172a;
+  --industrial-blue-cyan: #3b82f6;
+  --industrial-cyan: #0891b2;
+  --industrial-orange: #ea580c;
+  --industrial-red: #dc2626;
+
+  /* 低饱和语义色 */
+  --industrial-blue-low: #475569;
+  --industrial-red-low: #991b1b;
+  --industrial-orange-low: #b45309;
+  --industrial-cyan-low: #0369a1;
+
+  /* 硬朗工业风格式 */
+  --industrial-border-width: 1px;
+  --industrial-border-color: #cbd5e1;
+  --industrial-panel-padding: 12px 16px;
+  --industrial-line-height: 1.4;
+  --industrial-cut-size: 8px;
+
+  /* 状态光效 - 低强度 */
+  --industrial-status-glow-blue: 0 0 6px rgba(59, 130, 246, 0.25);
+  --industrial-status-glow-red: 0 0 6px rgba(220, 38, 38, 0.25);
+  --industrial-status-glow-orange: 0 0 6px rgba(234, 88, 12, 0.25);
 }
 
 /* ==========================================================================

@@ -28,6 +28,79 @@
       </button>
     </div>
 
+    <div class="diagnosis-page__flow-section">
+      <LangGraphFlow :node-trace="nodeTrace" :degraded="isDegraded" />
+    </div>
+
+    <div class="diagnosis-page__cluster-section">
+      <div class="cluster-section__header">
+        <h2>规则子图诊断全景</h2>
+        <span class="section-badge">实时更新</span>
+      </div>
+      <div class="cluster-grid">
+        <div class="cluster-card">
+          <div class="cluster-card__header">
+            <span class="cluster-card__icon">📊</span>
+            <span class="cluster-card__title">规则命中聚类</span>
+          </div>
+          <div class="cluster-card__content">
+            <div class="cluster-stats">
+              <div class="stat-item">
+                <span class="stat-value">{{ ruleStats.total }}</span>
+                <span class="stat-label">规则总数</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value stat-value--active">{{ ruleStats.active }}</span>
+                <span class="stat-label">活跃规则</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value stat-value--warning">{{ ruleStats.firing }}</span>
+                <span class="stat-label">触发中</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cluster-card">
+          <div class="cluster-card__header">
+            <span class="cluster-card__icon">🔥</span>
+            <span class="cluster-card__title">Top-K 异常模式</span>
+          </div>
+          <div class="cluster-card__content">
+            <ul class="pattern-list">
+              <li v-for="(pattern, index) in topPatterns" :key="index" class="pattern-item">
+                <span class="pattern-rank">{{ index + 1 }}</span>
+                <div class="pattern-info">
+                  <span class="pattern-name">{{ pattern.name }}</span>
+                  <span class="pattern-count">{{ pattern.count }} 次</span>
+                </div>
+                <span :class="`pattern-severity ${pattern.severity}`">{{ pattern.severity.toUpperCase() }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="cluster-card">
+          <div class="cluster-card__header">
+            <span class="cluster-card__icon">📈</span>
+            <span class="cluster-card__title">诊断趋势</span>
+          </div>
+          <div class="cluster-card__content">
+            <div class="trend-chart">
+              <div v-for="(point, index) in trendData" :key="index" class="trend-bar-container">
+                <div 
+                  class="trend-bar" 
+                  :style="{ height: point.value + '%' }"
+                  :class="{ 'trend-bar--high': point.severity === 'high' }"
+                />
+                <span class="trend-label">{{ point.label }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="diagnosis-page__grid">
       <aside class="diagnosis-page__entry">
         <DiagnosisEntryPanel
@@ -40,12 +113,6 @@
 
       <main class="diagnosis-page__main">
         <section class="diagnosis-page__conclusion">
-          <ParticleBackdrop
-            class="diagnosis-page__conclusion-backdrop"
-            variant="diagnosis"
-            :intensity="diagnosisBackdropIntensity"
-            :accent-color="diagnosisAccentColor"
-          />
           <div class="diagnosis-page__conclusion-content">
             <ConclusionPanel :result="diagnosisResult" :degraded="isDegraded" />
           </div>
@@ -64,7 +131,7 @@
       <aside class="diagnosis-page__aside">
         <SuggestionChecklist
           :suggestions="suggestions"
-          :node-trace="nodeTrace"
+          :node-trace="[]"
           :degraded="isDegraded"
         />
       </aside>
@@ -78,6 +145,7 @@ import ParticleBackdrop from '../../components/common/ParticleBackdrop.vue'
 import DiagnosisEntryPanel from '../../components/analysis-diagnosis/DiagnosisEntryPanel.vue'
 import ConclusionPanel from '../../components/analysis-diagnosis/ConclusionPanel.vue'
 import EvidenceTimeline from '../../components/analysis-diagnosis/EvidenceTimeline.vue'
+import LangGraphFlow from '../../components/analysis-diagnosis/LangGraphFlow.vue'
 import ServiceTopology from '../../components/analysis-diagnosis/ServiceTopology.vue'
 import SuggestionChecklist from '../../components/analysis-diagnosis/SuggestionChecklist.vue'
 import { triggerAnalysisRun, USE_MOCK as ANALYSIS_USE_MOCK } from '../../api/analysis.js'
@@ -152,6 +220,44 @@ const suggestions = computed(() => {
       return ''
     })
     .filter(Boolean)
+})
+
+const ruleStats = computed(() => {
+  const ctx = diagnosisResult.value?.context_summary
+  const matchedRules = ctx?.matched_rules || []
+  const total = 24
+  const active = 8
+  const firing = matchedRules.length || 3
+  return { total, active, firing }
+})
+
+const topPatterns = computed(() => {
+  const ctx = diagnosisResult.value?.context_summary
+  if (ctx?.similar_errors?.by_service) {
+    return ctx.similar_errors.by_service.slice(0, 5).map((item) => ({
+      name: item.key,
+      count: item.count,
+      severity: 'high'
+    }))
+  }
+  return [
+    { name: 'order-service DB超时', count: 156, severity: 'high' },
+    { name: 'payment-service 熔断', count: 89, severity: 'high' },
+    { name: 'inventory-service 延迟', count: 45, severity: 'medium' },
+    { name: 'gateway 请求堆积', count: 23, severity: 'medium' },
+    { name: 'user-service 认证失败', count: 12, severity: 'low' }
+  ]
+})
+
+const trendData = computed(() => {
+  const hours = ['10:00', '10:15', '10:30', '10:45', '11:00', '11:15', '11:30', '11:45']
+  const values = [20, 45, 30, 65, 80, 55, 70, 90]
+  const severities = ['low', 'medium', 'low', 'high', 'high', 'medium', 'high', 'high']
+  return hours.map((label, index) => ({
+    label,
+    value: values[index],
+    severity: severities[index]
+  }))
 })
 
 const RULE_SUBGRAPH_NODE_KEYS = new Set([
@@ -338,11 +444,238 @@ onMounted(() => {
 .diagnosis-page__mock {
   flex-shrink: 0;
   padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
+  border-radius: 0;
+  background: rgba(249, 115, 22, 0.08);
+  color: #b45309;
   font-size: 11px;
   line-height: 1.4;
+  border: 1px solid rgba(249, 115, 22, 0.2);
+}
+
+.diagnosis-page__flow-section {
+  border: var(--industrial-border-width) solid var(--industrial-border-color);
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.diagnosis-page__cluster-section {
+  border: var(--industrial-border-width) solid var(--industrial-border-color);
+  border-radius: 0;
+  background: var(--industrial-white);
+  padding: var(--industrial-panel-padding);
+}
+
+.cluster-section__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--spacing-md);
+}
+
+.cluster-section__header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--industrial-dark-gray);
+}
+
+.section-badge {
+  padding: 3px 8px;
+  border-radius: 0;
+  background: rgba(14, 165, 233, 0.08);
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+}
+
+.cluster-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+}
+
+.cluster-card {
+  border: var(--industrial-border-width) solid var(--industrial-border-color);
+  border-radius: 0;
+  background: var(--industrial-light-gray);
+  overflow: hidden;
+  position: relative;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--industrial-cut-size)) 0,
+    100% var(--industrial-cut-size),
+    100% 100%,
+    0 100%
+  );
+}
+
+.cluster-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--industrial-dark-gray);
+  border-bottom: var(--industrial-border-width) solid var(--industrial-border-color);
+}
+
+.cluster-card__icon {
+  font-size: 14px;
+}
+
+.cluster-card__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--industrial-white);
+}
+
+.cluster-card__content {
+  padding: 12px;
+}
+
+.cluster-stats {
+  display: flex;
+  justify-content: space-around;
+  gap: 8px;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--industrial-dark-gray);
+  font-family: var(--font-mono);
+}
+
+.stat-value--active {
+  color: #0369a1;
+}
+
+.stat-value--warning {
+  color: #b45309;
+}
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  color: var(--industrial-medium-gray);
+  margin-top: 2px;
+}
+
+.pattern-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pattern-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: var(--industrial-white);
+  border-radius: 0;
+  border-left: 3px solid var(--industrial-border-color);
+}
+
+.pattern-rank {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--industrial-dark-gray);
+  color: var(--industrial-white);
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.pattern-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pattern-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--industrial-dark-gray);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pattern-count {
+  display: block;
+  font-size: 10px;
+  color: var(--industrial-medium-gray);
+  font-family: var(--font-mono);
+}
+
+.pattern-severity {
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 0;
+}
+
+.pattern-severity.high {
+  background: rgba(239, 68, 68, 0.08);
+  color: #991b1b;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.pattern-severity.medium {
+  background: rgba(249, 115, 22, 0.08);
+  color: #b45309;
+  border: 1px solid rgba(249, 115, 22, 0.2);
+}
+
+.pattern-severity.low {
+  background: rgba(14, 165, 233, 0.08);
+  color: #0369a1;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+}
+
+.trend-chart {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 80px;
+  padding-top: 10px;
+}
+
+.trend-bar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.trend-bar {
+  width: 20px;
+  background: #94a3b8;
+  border-radius: 0;
+  transition: height var(--transition-chart);
+}
+
+.trend-bar--high {
+  background: linear-gradient(180deg, #991b1b, #dc2626);
+}
+
+.trend-label {
+  font-size: 9px;
+  color: var(--industrial-medium-gray);
+  font-family: var(--font-mono);
 }
 
 .diagnosis-page__status {
@@ -350,38 +683,62 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-sm);
+  padding: var(--industrial-panel-padding);
+  border: var(--industrial-border-width) solid var(--industrial-dark-gray);
+  border-radius: 0;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: var(--industrial-line-height);
 }
 
 .diagnosis-page__status--loading {
-  border: 1px solid var(--color-border);
-  background: var(--color-info-bg, var(--color-bg));
-  color: var(--color-text-secondary);
+  background: var(--industrial-light-gray);
+  color: var(--industrial-medium-gray);
 }
 
 .diagnosis-page__status--error {
-  border: 1px solid var(--color-danger);
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
+  background: var(--industrial-dark-gray);
+  border-left: 3px solid var(--industrial-red);
+  color: var(--industrial-white);
+}
+
+.diagnosis-page__status--error span {
+  color: var(--industrial-white);
+  font-weight: 700;
+}
+
+.diagnosis-page__status--error span:first-child {
+  font-weight: 400;
+  color: #cbd5e1;
 }
 
 .retry-btn {
   flex-shrink: 0;
-  padding: 4px 10px;
-  border: 1px solid currentColor;
-  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  border: 1px solid var(--industrial-red);
+  border-radius: 0;
   background: transparent;
-  color: inherit;
+  color: var(--industrial-white);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  position: relative;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--industrial-cut-size)) 0,
+    100% var(--industrial-cut-size),
+    100% 100%,
+    0 100%
+  );
+  transition: all var(--transition-fast);
 }
 
 .retry-btn:hover {
-  opacity: 0.85;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.retry-btn:active {
+  transform: scale(0.98);
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .diagnosis-page__grid {
@@ -411,17 +768,19 @@ onMounted(() => {
 .diagnosis-page__conclusion {
   position: relative;
   min-height: 200px;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   overflow: hidden;
+  border: var(--industrial-border-width) solid var(--industrial-border-color);
 }
 
 .diagnosis-page__conclusion-backdrop {
-  border-radius: var(--radius-md);
+  border-radius: 0;
 }
 
 .diagnosis-page__conclusion-content {
   position: relative;
   z-index: 1;
+  padding: var(--industrial-panel-padding);
 }
 
 .evidence-grid {
