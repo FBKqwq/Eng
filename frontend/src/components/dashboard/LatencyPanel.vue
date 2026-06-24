@@ -113,16 +113,46 @@ const latencySeries = computed(() => latencyChart.value.series)
 </script>
 
 <style scoped>
+.latency-panel {
+  padding: 14px;
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, rgba(15, 23, 42, 0.022) 1px, transparent 1px),
+    #ffffff;
+  background-size: 32px 32px;
+}
+
+.latency-panel:hover {
+  transform: none;
+}
+
 .latency-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #0f2438;
 }
 
 .latency-panel__header h2 {
   margin: 0;
+  color: #0f2438;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.latency-panel__header h2::before {
+  display: inline-block;
+  width: 5px;
+  height: 15px;
+  margin-right: 8px;
+  background: #0f2438;
+  transform: skewX(-16deg);
+  vertical-align: -2px;
+  content: '';
 }
 
 .latency-panel__mock {
@@ -136,26 +166,31 @@ const latencySeries = computed(() => latencyChart.value.series)
 }
 
 .latency-panel__card {
-  padding: var(--spacing-md);
+  padding: 12px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
+  border: 1px solid #c4d0dc;
+  border-radius: 0;
+  box-shadow: none;
   transition:
     transform 180ms ease,
     box-shadow 180ms ease;
 }
 
 .latency-panel__card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #6e8295;
+  transform: none;
+  box-shadow: inset 3px 0 0 #0ea5e9;
 }
 
 .latency-panel__subtitle {
   margin: 0 0 var(--spacing-sm);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
+  padding-left: 9px;
+  border-left: 3px solid #0ea5e9;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #24384b;
 }
 
 .latency-panel__retry {

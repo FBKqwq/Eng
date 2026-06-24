@@ -123,6 +123,16 @@ export const QUERY_FIELD_MAP = Object.freeze({
   }
 })
 
+/** LogQueryRequest 请求键 → Elasticsearch 实际字段名（供聚合 filters 使用） */
+const AGGREGATE_FILTER_FIELD_MAP = Object.freeze(
+  Object.fromEntries(
+    Object.entries(QUERY_FIELD_MAP).map(([fieldName, descriptor]) => [
+      descriptor.key,
+      fieldName
+    ])
+  )
+)
+
 /** keyword multi_match 已覆盖的字段提示（不可精确筛选） */
 export const KEYWORD_HINT_FIELDS = Object.freeze([
   'message',
@@ -242,8 +252,8 @@ function descriptorFromField(fieldName) {
     tier: mapped.tier,
     numeric: Boolean(mapped.numeric),
     options: mapped.type === 'terms' ? mapped.options : undefined,
-    multiple: mapped.type === 'terms',
-    placeholder: mapped.type === 'keyword' ? '精确匹配' : '多个值用逗号分隔'
+    multiple: false,
+    placeholder: mapped.type === 'keyword' ? '精确匹配' : mapped.type === 'terms' && mapped.options ? '全部' : '多个值用逗号分隔'
   }
 }
 
@@ -279,6 +289,34 @@ export function normalizeFiltersForRequest(filters = {}, keyword = '') {
   if (kw) body.keyword = kw
 
   return body
+}
+
+/**
+ * 将日志检索筛选键转换为 /logs/aggregate filters 使用的实际字段名。
+ * 例如 log_levels → log_level、status_codes → status_code。
+ *
+ * @param {Record<string, unknown>} filters
+ * @returns {Record<string, unknown>}
+ */
+export function mapQueryFiltersToAggregateFilters(filters = {}) {
+  const mapped = {}
+
+  for (const [requestKey, value] of Object.entries(filters)) {
+    if (
+      value == null ||
+      value === '' ||
+      (Array.isArray(value) && value.length === 0)
+    ) {
+      continue
+    }
+
+    const aggregateField = AGGREGATE_FILTER_FIELD_MAP[requestKey]
+    if (aggregateField) {
+      mapped[aggregateField] = value
+    }
+  }
+
+  return mapped
 }
 
 /** 请求键 → 人类可读标签 */

@@ -1,10 +1,9 @@
 import json
 import socket
 import subprocess
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, Optional, Tuple
 from urllib.parse import urlparse
 
-from app.core.config import settings
 from app.schemas.system import ContainerStatus, DockerStatusResponse
 
 
@@ -14,15 +13,18 @@ GATEWAY_PROBE_TIMEOUT_SECONDS = 2.5
 
 def get_docker_status(project_name: str, monitored_services: Iterable[str]) -> DockerStatusResponse:
     services = [service.strip() for service in monitored_services if service.strip()]
-    fallback_error: str | None = None
 
     try:
         containers = _read_compose_containers(project_name)
         stats = _read_container_stats()
     except Exception as exc:  # noqa: BLE001
-        containers = []
-        stats = {}
-        fallback_error = f"Docker status unavailable: {exc}"
+        fallback = _build_gateway_probe_statuses(services)
+        return DockerStatusResponse(
+            project=project_name,
+            available=any(item.status == "running" for item in fallback.values()),
+            error=f"Docker status unavailable: {exc}; using gateway port probes",
+            containers=fallback,
+        )
 
     by_service = {
         _resolve_service_name(container, project_name): container
@@ -30,38 +32,23 @@ def get_docker_status(project_name: str, monitored_services: Iterable[str]) -> D
     }
 
     result: Dict[str, ContainerStatus] = {}
-    docker_available = containers and stats
-
     for service in services:
         try:
-            if docker_available:
-                container = by_service.get(service)
-                if not container:
-                    probe = _gateway_probe_container(service)
-                    result[service] = probe or _unknown_container(
-                        service,
-                        "Container not found in Docker project",
-                    )
-                    continue
-
-                name = container.get("Names", "")
-                stat = stats.get(name) or stats.get(container.get("ID", ""))
-                result[service] = _build_container_status(service, container, stat)
-            else:
-                probe = _gateway_probe_container(service)
-                result[service] = probe or _unknown_container(
+            container = by_service.get(service)
+            if not container:
+                result[service] = _gateway_probe_container(service) or _unknown_container(
                     service,
-                    "Docker status unavailable and no gateway probe configured",
+                    "Container not found in Docker project",
                 )
+                continue
+
+            name = container.get("Names", "")
+            stat = stats.get(name) or stats.get(container.get("ID", ""))
+            result[service] = _build_container_status(service, container, stat)
         except Exception as exc:  # noqa: BLE001
             result[service] = _unknown_container(service, f"Docker status parse failed: {exc}")
 
-    return DockerStatusResponse(
-        project=project_name,
-        available=any(item.status == "running" for item in result.values()),
-        error=fallback_error,
-        containers=result,
-    )
+    return DockerStatusResponse(project=project_name, available=True, containers=result)
 
 
 def _read_compose_containers(project_name: str) -> list[dict]:
@@ -195,6 +182,8 @@ def _gateway_probe_container(service: str) -> Optional[ContainerStatus]:
 
 
 def _gateway_probe_endpoint(service: str) -> Optional[tuple[str, int]]:
+    from app.core.config import settings
+
     if service == "kafka":
         return _host_port_from_bootstrap(getattr(settings, "kafka_bootstrap_servers", ""), default_port=9092)
     if service == "elasticsearch":
@@ -202,7 +191,9 @@ def _gateway_probe_endpoint(service: str) -> Optional[tuple[str, int]]:
     if service == "kibana":
         return _host_port_from_url(getattr(settings, "kibana_base_url", ""), default_port=5601)
     if service == "logstash":
-        return _host_port_from_url(getattr(settings, "logstash_hosts", ""), default_port=9600)
+        host_port = _host_port_from_bootstrap(getattr(settings, "kafka_bootstrap_servers", ""), default_port=9092)
+        if host_port:
+            return host_port[0], 9600
     return None
 
 

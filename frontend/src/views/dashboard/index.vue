@@ -1,54 +1,84 @@
 <template>
-  <div class="dashboard-page">
-    <div class="dashboard-page__hero">
-      <ParticleBackdrop variant="dashboard" :intensity="0.55" />
-      <div class="dashboard-page__hero-content">
-        <HealthOverview />
+  <div class="dashboard-screen">
+    <DashboardWebGLFlow
+      :telemetry="particleTelemetry"
+      :sources="logSources.data.value?.buckets || []"
+    />
+
+    <div class="dashboard-screen__content">
+      <DashboardParticlePipeline
+        :telemetry="particleTelemetry"
+        :total-logs="totalLogs"
+      />
+
+      <div class="dashboard-screen__top">
+        <DashboardHealthPanel
+          :health-score="healthScore"
+          :total-logs="totalLogs"
+          :error-rate="errorRate"
+          :average-latency="averageLatency"
+          :p95-latency="p95Latency"
+          :alert-total="alertTotal"
+          :loading="loading"
+        />
+        <DashboardReportPanel :report="latestReport" />
+      </div>
+
+      <div class="dashboard-screen__middle">
+        <DashboardTrafficPanel
+          :traffic-buckets="traffic.data.value?.buckets"
+          :error-buckets="errorTrend.data.value?.buckets"
+          :loading="traffic.loading.value || errorTrend.loading.value"
+        />
+        <DashboardAlertTable :alerts="alerts" :total="alertTotal" />
+      </div>
+
+      <div class="dashboard-screen__bottom">
+        <div class="dashboard-screen__analytics">
+          <div class="dashboard-screen__errors">
+            <DashboardErrorServices :buckets="errorDistribution.data.value?.extra?.by_service || []" />
+            <DashboardErrorCodes :buckets="errorDistribution.data.value?.buckets || []" />
+          </div>
+          <DashboardLatencyPanel
+            :buckets="latency.data.value?.buckets || []"
+            :loading="latency.loading.value"
+          />
+        </div>
+        <DashboardSourceStatus :buckets="logSources.data.value?.buckets || []" />
       </div>
     </div>
-    <TrafficErrorPanel />
-    <LatencyPanel />
-    <section class="dashboard-page__digest page-grid page-grid-2" aria-label="预警与体检摘要">
-      <AlertDigest />
-      <LatestReportCard />
-    </section>
   </div>
 </template>
 
 <script setup>
-import ParticleBackdrop from '../../components/common/ParticleBackdrop.vue'
-import HealthOverview from '../../components/dashboard/HealthOverview.vue'
-import TrafficErrorPanel from '../../components/dashboard/TrafficErrorPanel.vue'
-import LatencyPanel from '../../components/dashboard/LatencyPanel.vue'
-import AlertDigest from '../../components/dashboard/AlertDigest.vue'
-import LatestReportCard from '../../components/dashboard/LatestReportCard.vue'
+import DashboardWebGLFlow from '../../components/dashboard/DashboardWebGLFlow.vue'
+import DashboardParticlePipeline from '../../components/dashboard/DashboardParticlePipeline.vue'
+import DashboardHealthPanel from '../../components/dashboard/DashboardHealthPanel.vue'
+import DashboardReportPanel from '../../components/dashboard/DashboardReportPanel.vue'
+import DashboardTrafficPanel from '../../components/dashboard/DashboardTrafficPanel.vue'
+import DashboardAlertTable from '../../components/dashboard/DashboardAlertTable.vue'
+import DashboardErrorServices from '../../components/dashboard/DashboardErrorServices.vue'
+import DashboardErrorCodes from '../../components/dashboard/DashboardErrorCodes.vue'
+import DashboardLatencyPanel from '../../components/dashboard/DashboardLatencyPanel.vue'
+import DashboardSourceStatus from '../../components/dashboard/DashboardSourceStatus.vue'
+import { useDashboardData } from '../../components/dashboard/useDashboardData.js'
+import '../../components/dashboard/dashboard-screen.css'
+
+const {
+  traffic,
+  errorTrend,
+  errorDistribution,
+  latency,
+  logSources,
+  alerts,
+  alertTotal,
+  latestReport,
+  totalLogs,
+  errorRate,
+  averageLatency,
+  p95Latency,
+  healthScore,
+  particleTelemetry,
+  loading
+} = useDashboardData()
 </script>
-
-<style scoped>
-.dashboard-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.dashboard-page__hero {
-  position: relative;
-  min-height: 300px;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.dashboard-page__hero-content {
-  position: relative;
-  z-index: 1;
-}
-
-.dashboard-page__digest {
-  margin: 0;
-}
-
-.dashboard-page__digest > :deep(.page-section) {
-  margin-bottom: 0;
-  height: 100%;
-}
-</style>

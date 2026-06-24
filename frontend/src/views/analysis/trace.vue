@@ -1,568 +1,402 @@
 <template>
-  <div class="trace-page">
-    <header class="trace-page__header">
-      <div class="header-info">
-        <h2 class="header-title">预警推理链路</h2>
-        <p class="header-desc">展示来自预警中心与诊断分析的推理链路轨迹，按严重程度排序</p>
-      </div>
-      <div class="header-stats">
-        <span class="stat-pill">
-          <span class="stat-pill__dot dot--danger" />
-          {{ pendingCount }} 待确认
-        </span>
-        <span class="stat-pill">
-          <span class="stat-pill__dot dot--success" />
-          {{ successfulCount }} 已确认
-        </span>
-      </div>
-    </header>
-
-    <!-- 搜索过滤栏 -->
-    <div class="trace-page__filters">
-      <div class="filter-search">
-        <svg class="filter-search__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          v-model="searchText"
-          type="search"
-          class="filter-search__input"
-          placeholder="搜索预警标题、服务、ID…"
-          aria-label="搜索预警链路"
-        />
-        <button
-          v-if="searchText"
-          type="button"
-          class="filter-search__clear"
-          aria-label="清除搜索"
-          @click="searchText = ''"
-        >×</button>
-      </div>
-
-      <div class="filter-group" role="group" aria-label="严重程度筛选">
-        <button
-          v-for="s in SEVERITY_OPTIONS"
-          :key="s.value"
-          type="button"
-          class="filter-chip"
-          :class="{ active: activeSeverities.has(s.value) }"
-          @click="toggleSeverity(s.value)"
-        >{{ s.label }}</button>
-      </div>
-
-      <div class="filter-group" role="group" aria-label="状态筛选">
-        <button
-          v-for="s in STATUS_OPTIONS"
-          :key="s.value"
-          type="button"
-          class="filter-chip"
-          :class="{ active: activeStatuses.has(s.value) }"
-          @click="toggleStatus(s.value)"
-        >{{ s.label }}</button>
-      </div>
-
-      <button
-        v-if="hasActiveFilters"
-        type="button"
-        class="filter-reset"
-        @click="resetFilters"
-      >重置</button>
-
-      <span class="filter-count">{{ filteredAll.length }} 条</span>
-    </div>
-
-    <div
-      v-if="loading && !filteredAll.length"
-      class="trace-page__status trace-page__status--loading"
-      role="status"
-      aria-live="polite"
-    >
-      正在加载预警链路…
-    </div>
-
-    <EmptyState
-      v-else-if="!filteredAll.length"
-      :title="hasActiveFilters ? '无匹配结果' : '暂无预警链路'"
-      :description="hasActiveFilters ? '调整筛选条件后再试' : '预警中心产生预警后，对应的推理链路将在此自动展示'"
-    />
-
-    <template v-else>
-      <section class="trace-page__section" v-if="filteredPending.length">
-        <header class="section-header">
-          <div class="section-header__left">
-            <span class="section-dot dot--danger" />
-            <h3>待确认预警</h3>
-            <span class="section-count tabular-nums">{{ filteredPending.length }} 条</span>
-          </div>
-          <span class="section-hint">严重程度 Top 10</span>
-        </header>
-        <div class="trace-grid">
-          <AlertTracePanel
-            v-for="trace in filteredPending"
-            :key="trace.alertId"
-            :trace="trace"
-            @click="openTraceDetail(trace)"
-          />
-        </div>
-      </section>
-
-      <section class="trace-page__section" v-if="filteredSuccessful.length">
-        <header class="section-header">
-          <div class="section-header__left">
-            <span class="section-dot dot--success" />
-            <h3>已确认预警链路</h3>
-            <span class="section-count tabular-nums">{{ filteredSuccessful.length }} 条</span>
-          </div>
-          <span class="section-hint">按时间倒序</span>
-        </header>
-        <div class="trace-grid">
-          <AlertTracePanel
-            v-for="trace in filteredSuccessful"
-            :key="trace.alertId"
-            :trace="trace"
-            :degraded="trace.degraded"
-            @click="openTraceDetail(trace)"
-          />
-        </div>
-      </section>
+  <AnalysisWorkbench
+    title="调用链路追踪"
+    eyebrow="ALERT REASONING CHAINS / TRACE BOARD"
+    subtitle="不再手动检索 trace_id，直接消费预警中心持久化的预警推理链路，按严重程度展示待验证与已成功预警。"
+    :tone="breakpointTone"
+  >
+    <template #actions>
+      <button type="button" class="ak-button" :disabled="loading" @click="loadAlertChains">刷新链路</button>
     </template>
 
-    <TraceDetailDrawer
-      :visible="drawerVisible"
-      :trace="selectedTrace"
-      @close="closeDrawer"
-    />
-  </div>
+    <TacticalKpiStrip :items="kpiItems" />
+
+    <section class="trace-chain-grid">
+      <div class="ak-panel">
+        <h2 class="ak-panel__title">已预警但不知是否成功 / TOP_K</h2>
+        <div class="chain-list">
+          <button
+            v-for="chain in pendingTopK"
+            :key="chain.id"
+            type="button"
+            class="chain-card"
+            :class="[`chain-card--${chain.tone}`, { active: selectedChain?.id === chain.id }]"
+            @click="selectedChain = chain"
+          >
+            <span>{{ chain.severity }}</span>
+            <strong>{{ chain.title }}</strong>
+            <small>{{ chain.service }} / {{ chain.age }}</small>
+          </button>
+          <p v-if="!pendingTopK.length" class="ak-muted">暂无待验证预警链路。</p>
+        </div>
+      </div>
+
+      <div class="ak-panel">
+        <h2 class="ak-panel__title">已预警并且成功 / TOP_K</h2>
+        <div class="chain-list">
+          <button
+            v-for="chain in successTopK"
+            :key="chain.id"
+            type="button"
+            class="chain-card"
+            :class="[`chain-card--${chain.tone}`, { active: selectedChain?.id === chain.id }]"
+            @click="selectedChain = chain"
+          >
+            <span>{{ chain.severity }}</span>
+            <strong>{{ chain.title }}</strong>
+            <small>{{ chain.service }} / {{ chain.age }}</small>
+          </button>
+          <p v-if="!successTopK.length" class="ak-muted">暂无成功预警链路，预警中心确认后会自动出现。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="ak-panel">
+      <ReasoningInspector
+        variant="compact"
+        title="选中预警推理路径"
+        subtitle="展示预警如何从报告/诊断产物、证据匹配、服务影响到成功验证"
+        :node-trace="selectedChain?.node_trace || []"
+      />
+    </section>
+
+    <main class="trace-layout">
+      <section class="ak-panel">
+        <h2 class="ak-panel__title">预警链路图谱</h2>
+        <G6RelationGraph title="ALERT TRACE GRAPH" :nodes="traceNodes" :edges="traceEdges" @select-node="selectedService = $event.label" />
+      </section>
+      <section class="ak-panel">
+        <h2 class="ak-panel__title">链路多维投影</h2>
+        <DigitalTwinScene
+          title="CHAIN TIME / SEVERITY / EVIDENCE"
+          :points="traceProjectionPoints"
+          :active-service="selectedService || selectedChain?.service"
+        />
+      </section>
+    </main>
+
+    <section class="ak-panel trace-breakpoint">
+      <h2 class="ak-panel__title">链路断点解释</h2>
+      <div v-if="selectedChain" class="trace-breakpoint__content">
+        <strong>{{ selectedChain.service }}</strong>
+        <span>{{ selectedChain.success ? '成功预警链路已验证' : '待验证预警链路，按严重度优先跟进' }}</span>
+        <p>{{ selectedChain.summary }}</p>
+      </div>
+      <p v-else class="ak-muted">等待预警中心产出或持久化链路。</p>
+    </section>
+
+    <section v-if="listError" class="trace-status trace-status--error">
+      <span>{{ listError }}</span>
+      <button type="button" class="ak-button" @click="loadAlertChains">重试</button>
+    </section>
+  </AnalysisWorkbench>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import EmptyState from '../../components/common/EmptyState.vue'
-import AlertTracePanel from '../../components/analysis-trace/AlertTracePanel.vue'
-import TraceDetailDrawer from '../../components/analysis-trace/TraceDetailDrawer.vue'
+import AnalysisWorkbench from '../../components/common/AnalysisWorkbench.vue'
+import TacticalKpiStrip from '../../components/common/TacticalKpiStrip.vue'
+import G6RelationGraph from '../../components/common/G6RelationGraph.vue'
+import DigitalTwinScene from '../../components/common/DigitalTwinScene.vue'
+import ReasoningInspector from '../../components/common/ReasoningInspector.vue'
 import { getActiveAlerts } from '../../api/alerts.js'
-import { USE_MOCK as ALERTS_MOCK } from '../../api/alerts.js'
-import { USE_MOCK as ANALYSIS_MOCK } from '../../api/analysis.js'
+import { formatDuration } from '../../utils/format.js'
+
+const TRACE_STORE_KEY = 'elk_alert_success_chains'
 
 const loading = ref(false)
-const allTraces = ref([])
-const selectedTrace = ref(null)
-const drawerVisible = ref(false)
+const listError = ref('')
+const activeAlerts = ref([])
+const storedChains = ref([])
+const selectedChain = ref(null)
+const selectedService = ref('')
 
-const searchText = ref('')
-const activeSeverities = ref(new Set(['critical', 'high', 'medium', 'low']))
-const activeStatuses = ref(new Set(['active', 'acknowledged', 'resolved']))
-
-const SEVERITY_OPTIONS = [
-  { value: 'critical', label: '严重' },
-  { value: 'high', label: '高危' },
-  { value: 'medium', label: '中危' },
-  { value: 'low', label: '低危' }
-]
-
-const STATUS_OPTIONS = [
-  { value: 'active', label: '待确认' },
-  { value: 'acknowledged', label: '已确认' },
-  { value: 'resolved', label: '已解决' }
-]
-
-const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 }
-
-function toggleSeverity(val) {
-  const next = new Set(activeSeverities.value)
-  if (next.has(val)) {
-    if (next.size > 1) next.delete(val)
-  } else {
-    next.add(val)
+const allChains = computed(() => {
+  const active = activeAlerts.value.map((alert) => normalizeAlertChain(alert, false))
+  const stored = storedChains.value.map((chain) => normalizeStoredChain(chain))
+  const map = new Map()
+  for (const chain of [...active, ...stored]) {
+    const existing = map.get(chain.id)
+    if (!existing || (chain.success && !existing.success)) map.set(chain.id, chain)
   }
-  activeSeverities.value = next
-}
-
-function toggleStatus(val) {
-  const next = new Set(activeStatuses.value)
-  if (next.has(val)) {
-    if (next.size > 1) next.delete(val)
-  } else {
-    next.add(val)
-  }
-  activeStatuses.value = next
-}
-
-function resetFilters() {
-  searchText.value = ''
-  activeSeverities.value = new Set(['critical', 'high', 'medium', 'low'])
-  activeStatuses.value = new Set(['active', 'acknowledged', 'resolved'])
-}
-
-const hasActiveFilters = computed(() => {
-  return (
-    searchText.value.trim() !== '' ||
-    activeSeverities.value.size < 4 ||
-    activeStatuses.value.size < 3
-  )
+  return [...map.values()].sort((a, b) => severityWeight(b.severity) - severityWeight(a.severity) || b.ts - a.ts)
 })
 
-function buildNodeTrace() {
-  return [
-    { node_name: 'fetch_context', status: 'success', duration_ms: 820 },
-    { node_name: 'correlate_events', status: 'success', duration_ms: 560 },
-    { node_name: 'infer_root_cause', status: 'success', duration_ms: 340 },
-    { node_name: 'assess_severity', status: 'success', duration_ms: 125 },
-    { node_name: 'generate_event_report', status: 'success', duration_ms: 210 }
+const pendingTopK = computed(() => allChains.value.filter((chain) => !chain.success).slice(0, 6))
+const successTopK = computed(() => allChains.value.filter((chain) => chain.success).slice(0, 6))
+const breakpointTone = computed(() => (pendingTopK.value.some((chain) => ['critical', 'high'].includes(chain.severity)) ? 'red' : 'blue'))
+
+const kpiItems = computed(() => [
+  { label: '待验证链路', value: pendingTopK.value.length, hint: 'warned / unknown', tone: pendingTopK.value.length ? 'red' : 'green' },
+  { label: '成功链路', value: successTopK.value.length, hint: 'warned / success', tone: successTopK.value.length ? 'green' : 'blue' },
+  { label: '最高严重度', value: allChains.value[0]?.severity || '-', hint: allChains.value[0]?.service || 'no chain', tone: breakpointTone.value === 'red' ? 'red' : 'blue' },
+  { label: '影响服务', value: new Set(allChains.value.map((chain) => chain.service).filter(Boolean)).size, hint: 'service coverage', tone: 'blue' },
+  { label: '链路总数', value: allChains.value.length, hint: 'alert chains', tone: 'green' }
+])
+
+const traceNodes = computed(() => {
+  const chain = selectedChain.value || allChains.value[0]
+  if (!chain) return []
+  const nodes = [
+    { id: 'alert-output', label: '预警产出', tone: chain.success ? 'success' : 'danger', size: 54 },
+    { id: chain.id, label: chain.title, tone: chain.tone, size: 46 },
+    { id: chain.service, label: chain.service, tone: chain.tone === 'red' ? 'danger' : 'blue', size: 40 }
   ]
+  chain.node_trace.forEach((node, index) => {
+    nodes.push({ id: `${chain.id}-node-${index}`, label: stageLabel(node.node_name || node.name || `node-${index}`), tone: resolveStatusTone(node.status), size: 30 })
+  })
+  return nodes
+})
+
+const traceEdges = computed(() => {
+  const chain = selectedChain.value || allChains.value[0]
+  if (!chain) return []
+  const edges = [
+    { source: 'alert-output', target: chain.id, label: chain.success ? '成功' : '待验证', tone: chain.success ? 'normal' : 'danger' },
+    { source: chain.id, target: chain.service, label: '影响服务', tone: chain.tone === 'red' ? 'danger' : 'normal' }
+  ]
+  chain.node_trace.forEach((node, index) => {
+    const id = `${chain.id}-node-${index}`
+    edges.push({ source: index === 0 ? chain.id : `${chain.id}-node-${index - 1}`, target: id, label: node.status || 'node', tone: resolveStatusTone(node.status) === 'danger' ? 'danger' : 'normal' })
+  })
+  return edges
+})
+
+const traceProjectionPoints = computed(() =>
+  allChains.value.map((chain, index) => ({
+    id: chain.id,
+    label: chain.service,
+    type: chain.success ? 'success-chain' : 'pending-chain',
+    severity: chain.severity,
+    count: chain.evidenceCount || chain.node_trace.length || 1,
+    time: chain.ts || index
+  }))
+)
+
+function normalizeAlertChain(alert, forceSuccess) {
+  const payload = alert?.payload && typeof alert.payload === 'object' ? alert.payload : {}
+  const success = forceSuccess || isSuccessfulAlert(alert)
+  const ts = Date.parse(alert.created_at || alert.updated_at || '')
+  const nodeTrace = payload.node_trace || payload.reasoning_trace || alert.node_trace || [
+    { node_name: 'alert.source_report', status: 'completed', duration_ms: 180, output_summary: '读取周期体检和异常诊断产物' },
+    { node_name: 'alert.evidence_match', status: 'completed', duration_ms: 240, output_summary: '匹配证据日志、服务和时间窗' },
+    { node_name: 'alert.success_verify', status: success ? 'completed' : 'pending', duration_ms: 160, output_summary: success ? '预警已被验证成功' : '等待业务结果或人工确认' }
+  ]
+  const severity = String(alert.severity || 'medium').toLowerCase()
+  return {
+    id: alert.alert_id || `${alert.alert_type}-${alert.created_at}`,
+    title: alert.title || alert.alert_type || '预警链路',
+    service: alert.affected_service || payload.affected_service || 'unknown-service',
+    severity,
+    tone: ['critical', 'high'].includes(severity) ? 'red' : severity === 'medium' ? 'amber' : 'blue',
+    success,
+    ts: Number.isFinite(ts) ? ts : 0,
+    age: Number.isFinite(ts) ? formatDuration(Date.now() - ts) : '-',
+    evidenceCount: Number(alert.evidence_count || payload.evidence_count || 0),
+    summary: alert.description || payload.summary || payload.impact || '该链路来自预警中心产出，按严重度进入追踪队列。',
+    node_trace: nodeTrace
+  }
 }
 
-async function loadTraces() {
-  loading.value = true
-
-  if (ALERTS_MOCK || ANALYSIS_MOCK) {
-    allTraces.value = [
-      { alertId: 'a001', title: 'order-service 超时异常', alert_type: 'service_timeout', service: 'order-service', severity: 'critical', status: 'active', created_at: new Date(Date.now() - 1800000).toISOString(), node_trace: buildNodeTrace(), degraded: false },
-      { alertId: 'a002', title: 'payment 错误率激增', alert_type: 'error_rate_spike', service: 'payment-service', severity: 'high', status: 'active', created_at: new Date(Date.now() - 3600000).toISOString(), node_trace: buildNodeTrace(), degraded: false },
-      { alertId: 'a003', title: 'gateway 延迟劣化', alert_type: 'latency_degradation', service: 'gateway', severity: 'medium', status: 'acknowledged', created_at: new Date(Date.now() - 7200000).toISOString(), node_trace: buildNodeTrace(), degraded: true },
-      { alertId: 'a004', title: 'inventory 响应超时', alert_type: 'service_timeout', service: 'inventory-service', severity: 'low', status: 'resolved', created_at: new Date(Date.now() - 14400000).toISOString(), node_trace: buildNodeTrace(), degraded: false },
-      { alertId: 'a005', title: 'user-service 认证异常', alert_type: 'security_risk', service: 'user-service', severity: 'high', status: 'acknowledged', created_at: new Date(Date.now() - 5400000).toISOString(), node_trace: buildNodeTrace(), degraded: false }
-    ]
-    loading.value = false
-    return
+function normalizeStoredChain(chain) {
+  const alert = chain.alert || {}
+  const normalized = normalizeAlertChain(alert, Boolean(chain.success))
+  const savedTs = Date.parse(chain.saved_at || alert.updated_at || alert.created_at || '')
+  return {
+    ...normalized,
+    id: chain.id || normalized.id,
+    title: chain.title || normalized.title,
+    severity: String(chain.severity || normalized.severity || 'medium').toLowerCase(),
+    success: Boolean(chain.success),
+    ts: Number.isFinite(savedTs) ? savedTs : normalized.ts,
+    age: Number.isFinite(savedTs) ? formatDuration(Date.now() - savedTs) : normalized.age,
+    node_trace: Array.isArray(chain.node_trace) && chain.node_trace.length ? chain.node_trace : normalized.node_trace
   }
+}
 
+function isSuccessfulAlert(alert) {
+  const payload = alert?.payload && typeof alert.payload === 'object' ? alert.payload : {}
+  const status = String(alert?.status || '').toLowerCase()
+  return Boolean(payload.success || payload.prediction_success || payload.verified_success || ['resolved', 'success', 'successful'].includes(status))
+}
+
+function severityWeight(value) {
+  return { critical: 4, high: 3, medium: 2, low: 1 }[String(value || '').toLowerCase()] || 0
+}
+
+function resolveStatusTone(status) {
+  const lower = String(status || '').toLowerCase()
+  if (['failed', 'error'].includes(lower)) return 'danger'
+  if (['pending', 'degraded'].includes(lower)) return 'warning'
+  if (['completed', 'success', 'ok'].includes(lower)) return 'success'
+  return 'blue'
+}
+
+function stageLabel(name) {
+  const lower = String(name).toLowerCase()
+  if (lower.includes('source') || lower.includes('report')) return '产物读取'
+  if (lower.includes('evidence')) return '证据匹配'
+  if (lower.includes('success') || lower.includes('verify')) return '成功验证'
+  if (lower.includes('alert')) return '预警决策'
+  return '推理节点'
+}
+
+function readStoredChains() {
   try {
-    const res = await getActiveAlerts({ limit: 50 })
-    const items = res.data?.items ?? []
-    allTraces.value = items.map((item) => ({
-      alertId: item.alert_id,
-      title: item.title || item.alert_type || '预警链路',
-      alert_type: item.alert_type,
-      service: item.affected_service || '全局',
-      severity: item.severity || 'medium',
-      status: item.status || 'active',
-      created_at: item.created_at,
-      node_trace: item.node_trace || buildNodeTrace(),
-      degraded: Boolean(item.degraded)
-    }))
+    const raw = localStorage.getItem(TRACE_STORE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
   } catch {
-    allTraces.value = []
+    return []
+  }
+}
+
+async function loadAlertChains() {
+  loading.value = true
+  listError.value = ''
+  try {
+    const res = await getActiveAlerts({ limit: 80 })
+    activeAlerts.value = Array.isArray(res?.data?.items) ? res.data.items : []
+    storedChains.value = readStoredChains()
+    selectedChain.value = selectedChain.value && allChains.value.find((chain) => chain.id === selectedChain.value.id)
+      ? allChains.value.find((chain) => chain.id === selectedChain.value.id)
+      : allChains.value[0] || null
+  } catch (err) {
+    activeAlerts.value = []
+    storedChains.value = readStoredChains()
+    selectedChain.value = allChains.value[0] || null
+    listError.value = err?.error?.message || err?.message || '预警链路加载失败'
   } finally {
     loading.value = false
   }
 }
 
-const pendingTraces = computed(() =>
-  [...allTraces.value]
-    .filter((t) => t.status === 'active')
-    .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
-    .slice(0, 10)
-)
-
-const successfulTraces = computed(() =>
-  [...allTraces.value]
-    .filter((t) => ['acknowledged', 'resolved'].includes(t.status))
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 10)
-)
-
-const filteredAll = computed(() => {
-  const q = searchText.value.trim().toLowerCase()
-  return allTraces.value.filter((t) => {
-    if (!activeSeverities.value.has(t.severity)) return false
-    if (!activeStatuses.value.has(t.status)) return false
-    if (q) {
-      return (
-        (t.title || '').toLowerCase().includes(q) ||
-        (t.service || '').toLowerCase().includes(q) ||
-        (t.alertId || '').toLowerCase().includes(q) ||
-        (t.alert_type || '').toLowerCase().includes(q)
-      )
-    }
-    return true
-  })
-})
-
-const filteredPending = computed(() =>
-  filteredAll.value
-    .filter((t) => t.status === 'active')
-    .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
-    .slice(0, 10)
-)
-
-const filteredSuccessful = computed(() =>
-  filteredAll.value
-    .filter((t) => ['acknowledged', 'resolved'].includes(t.status))
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 10)
-)
-
-const pendingCount = computed(() => pendingTraces.value.length)
-const successfulCount = computed(() => successfulTraces.value.length)
-
-function openTraceDetail(trace) {
-  selectedTrace.value = trace
-  drawerVisible.value = true
-}
-
-function closeDrawer() {
-  drawerVisible.value = false
-  selectedTrace.value = null
-}
-
-onMounted(() => {
-  loadTraces()
-})
+onMounted(loadAlertChains)
 </script>
 
 <style scoped>
-.trace-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.trace-page__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-}
-
-.header-title {
-  margin: 0 0 4px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.header-desc {
-  margin: 0;
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.header-stats {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.stat-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-surface);
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-.stat-pill__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.trace-page__status {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-}
-
-.trace-page__status--loading {
-  border: 1px solid var(--color-border);
-  background: var(--color-info-bg);
-  color: var(--color-text-secondary);
-}
-
-.trace-page__section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.section-header__left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.section-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.section-header h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.section-count {
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  font-size: 11px;
-  color: var(--color-text-muted);
-}
-
-.section-hint {
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.trace-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: var(--spacing-sm);
-}
-
-.trace-grid > * {
-  cursor: pointer;
-}
-
-/* 搜索过滤栏 */
-.trace-page__filters {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  padding: 10px var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-}
-
-.filter-search {
+.trace-chain-grid {
   position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.chain-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.chain-card {
+  --chain-accent: #6f9eac;
+  min-height: 78px;
+  padding: 9px;
+  color: #dce4eb;
+  background: rgba(7, 10, 14, 0.58);
+  border: 1px solid rgba(185, 196, 207, 0.16);
+  border-left: 3px solid var(--chain-accent);
+  border-radius: 2px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chain-card--red {
+  --chain-accent: #b96a61;
+}
+
+.chain-card--amber {
+  --chain-accent: #b28b5a;
+}
+
+.chain-card.active,
+.chain-card:hover {
+  border-color: color-mix(in srgb, var(--chain-accent) 58%, rgba(185, 196, 207, 0.18));
+}
+
+.chain-card span,
+.chain-card small {
+  display: block;
+  overflow: hidden;
+  color: #8e9aa6;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.chain-card strong {
+  display: block;
+  margin: 5px 0;
+  overflow: hidden;
+  color: #f2f5f7;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.72fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.trace-breakpoint {
+  margin-top: 10px;
+}
+
+.trace-breakpoint__content {
+  display: grid;
+  gap: 5px;
+}
+
+.trace-breakpoint__content strong {
+  color: #d4877c;
+  font-size: 18px;
+}
+
+.trace-breakpoint__content span,
+.trace-breakpoint__content p {
+  margin: 0;
+  color: #aab4bf;
+}
+
+.trace-status {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  color: #c9dde2;
+  background: rgba(111, 158, 172, 0.1);
+  border: 1px solid rgba(111, 158, 172, 0.32);
+  border-radius: 3px;
 }
 
-.filter-search__icon {
-  position: absolute;
-  left: 10px;
-  color: var(--color-text-muted);
-  pointer-events: none;
+.trace-status--error {
+  color: #e2b8b2;
+  background: rgba(185, 106, 97, 0.12);
+  border-color: rgba(185, 106, 97, 0.42);
 }
 
-.filter-search__input {
-  min-height: 34px;
-  width: 240px;
-  padding: 6px 30px 6px 32px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: 13px;
-  outline: none;
-  transition: border-color var(--transition-fast);
+@media (max-width: 1280px) {
+  .trace-chain-grid,
+  .trace-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
-.filter-search__input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.filter-search__input:focus {
-  border-color: var(--color-primary);
-  background: var(--color-surface);
-}
-
-/* 清除搜索按钮 */
-.filter-search__clear {
-  position: absolute;
-  right: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  border-radius: 4px;
-  background: var(--color-border);
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.filter-search__clear:hover {
-  background: var(--color-border-strong);
-}
-
-/* 过滤 Chip 组 */
-.filter-group {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.filter-chip {
-  padding: 4px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    color var(--transition-fast),
-    border-color var(--transition-fast),
-    background var(--transition-fast);
-}
-
-.filter-chip:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.filter-chip.active {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
-/* 重置按钮 */
-.filter-reset {
-  padding: 4px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-
-.filter-reset:hover {
-  color: var(--color-danger);
-  border-color: var(--color-danger);
-}
-
-/* 结果计数 */
-.filter-count {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--color-text-muted);
+@media (max-width: 760px) {
+  .chain-list {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

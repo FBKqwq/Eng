@@ -44,8 +44,8 @@ const props = defineProps({
 
 const chartRef = ref(null)
 let chartInstance = null
-let needsFullReplace = true
 let motionQuery = null
+let resizeObserver = null
 
 /** 图表数据刷新过渡时长（skill §9.3：300~500ms） */
 const CHART_ANIMATION_MS = 400
@@ -73,18 +73,12 @@ function initChart() {
   if (!chartRef.value || props.loading || isEmpty.value) return
   if (!chartInstance) {
     chartInstance = echarts.init(chartRef.value)
-    needsFullReplace = true
   }
   chartInstance.setOption(withAnimationDefaults(props.option), {
-    notMerge: needsFullReplace,
+    notMerge: true,
     lazyUpdate: false
   })
-  needsFullReplace = false
-}
-
-function clearChart() {
-  chartInstance?.clear()
-  needsFullReplace = true
+  chartInstance.resize()
 }
 
 function handleResize() {
@@ -97,10 +91,7 @@ function handleMotionPreferenceChange() {
 
 async function refreshChart() {
   await nextTick()
-  if (props.loading || isEmpty.value) {
-    clearChart()
-    return
-  }
+  if (props.loading || isEmpty.value) return
   initChart()
 }
 
@@ -115,12 +106,18 @@ onMounted(() => {
     motionQuery.addEventListener('change', handleMotionPreferenceChange)
   }
   initChart()
+  if (typeof ResizeObserver !== 'undefined' && chartRef.value) {
+    resizeObserver = new ResizeObserver(handleResize)
+    resizeObserver.observe(chartRef.value)
+  }
   window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
   motionQuery?.removeEventListener('change', handleMotionPreferenceChange)
   window.removeEventListener('resize', handleResize)
+  resizeObserver?.disconnect()
+  resizeObserver = null
   chartInstance?.dispose()
   chartInstance = null
 })

@@ -1,5 +1,15 @@
 # Frontend DEV 文档
 
+| 2026-06-24 | **异常诊断默认两阶段顺序执行** | `views/analysis/diagnosis.vue`、`frontend/DEV.md` | 诊断提交明确按顺序执行两阶段：先 `POST /diagnosis` 展示规则诊断、上下文证据、根因与建议，再自动触发 `POST /analysis/run` 补充 LangGraph 规则子图、`node_trace`、报告详情或 `alert_decision`；第二阶段运行期间保持状态栏提示和按钮禁用；单次诊断摘要不再使用后端占位 `message`，避免展示“LangChain/LangGraph 深度分析仍待接入” | 第二阶段仍依赖后端 `/analysis/run`、报告详情和 ES 写入状态；失败时保留第一阶段规则诊断结果并显示非阻断提示 |
+| 2026-06-24 | **异常诊断证据时间线间距自适应** | `components/analysis-diagnosis/EvidenceTimeline.vue`、`frontend/DEV.md` | 修复证据日志时间戳密集时按真实时间比例映射导致节点全部挤在左侧的问题；现在先按 `sortKey/timestamp` 排序，再按蛇形路径的行槽位均匀铺点，每行最多 12 个节点，保持时间顺序同时自动拉开视觉距离 | 仅调整前端排布算法；不改变 `evidence_logs[]` 数据契约 |
+| 2026-06-24 | **异常诊断证据蛇形时间线** | `components/analysis-diagnosis/EvidenceTimeline.vue`、`frontend/DEV.md` | 证据时间线改为从左上起始、横向到右侧后下弯反向、再向左横走并循环的蛇形单线；证据点按可解析时间戳映射到整条路径，缺少有效时间时按排序顺序等距分布；常态仅显示圆点，hover/focus 时通过信息浮层展示时间、服务、摘要和详情；`npm.cmd run build` 通过 | 仅调整前端展示；证据数据仍来自 `evidence_logs[]`，浮层同时保留原生 `title` 兜底 |
+| 2026-06-24 | **异常诊断单次诊断主路径修复** | `views/analysis/diagnosis.vue`、`frontend/DEV.md` | 修复单次诊断入口只走 `/analysis/run`、依赖规则子图/报告写入导致基础诊断不可用的问题；现在先调用稳定的 `submitDiagnosis()`/`POST /diagnosis` 展示单次规则诊断，再后台尝试 `/analysis/run` 补充 `node_trace` 与深度报告；`npm.cmd run build` 通过，后端诊断接口定向 pytest 通过 | 深度规则子图仍依赖 ES/报告链路；失败时页面保留单次诊断结论并显示非阻断提示 |
+| 2026-06-24 | **异常诊断卡片位置与证据滚动修正** | `views/analysis/diagnosis.vue`、`frontend/DEV.md` | 将“单次诊断结果”与“处置建议”展示位置互换；证据时间线外层增加 320px 内部滚动容器和深色滚动条，避免证据节点过多时撑高整页；单次诊断结果在新右侧卡片中改为单列布局 | 仅调整前端布局，不改变诊断/分析 API 数据流 |
+| 2026-06-24 | **异常诊断推理路径与建议结果拆分** | `components/analysis-diagnosis/SuggestionChecklist.vue`、`views/analysis/diagnosis.vue`、`frontend/DEV.md` | `SuggestionChecklist` 增加标题、建议清单、推理路径分区的显示开关；原“处置建议”卡片改名为“推理路径”且只显示 `node_trace` 推断图；“建议结果”移入“单次诊断结果”卡片内，复用原勾选清单逻辑 | 仅调整展示组合；建议数据仍来自 `diagnosis.suggestion[]` / `action_suggestions[]` |
+| 2026-06-24 | **异常诊断推理图与证据路径去留白** | `components/analysis-diagnosis/LangGraphFlow.vue`、`SuggestionChecklist.vue`、`EvidenceTimeline.vue`、`views/analysis/diagnosis.vue`、`frontend/DEV.md` | 推理路径独立卡片启用 `LangGraphFlow` 填充模式：隐藏重复内标题、降低 fitView padding、放大节点并填满卡片；证据时间线改为类似推理路径的紧凑节点流，常态只显示时间/服务/摘要，hover 或键盘聚焦节点时显示详细信息 | 证据详情仍来自 `evidence_logs[]`；浏览器原生 `title` 同步保留，防止浮层被滚动区域裁切时不可读 |
+| 2026-06-24 | **异常诊断证据时间线节点化修正** | `components/analysis-diagnosis/LangGraphFlow.vue`、`EvidenceTimeline.vue`、`frontend/DEV.md` | 推理路径填充模式恢复原始白色 UI，仅保留放大与低 padding 适配；证据时间线从网格卡片改为纵向“线 + 圆形节点 + 摘要”结构，hover/focus 节点显示详情浮层，强化时间线语义 | 证据区域仍保留内部滚动；详情浮层同时保留原生 `title` 兜底 |
+| 2026-06-24 | **业务漏斗洞察文字对比度修正** | `components/analysis-funnel/LossLocator.vue`、`components/analysis-funnel/FunnelMain.vue`、`frontend/DEV.md` | 修复深色分析工作台中漏斗专属组件仍使用浅色主题变量导致文字与背景融合的问题；流失定位标题、当前步骤强文本、步骤标签、步骤元信息、按钮和演示标记统一改为低饱和高对比深色风格；`npm.cmd run build` 通过；浏览器验证关键文字颜色可读且无新 error | 后续新增漏斗组件应避免直接使用浅色全局 `--color-text/--color-surface` 变量 |
+
 ## 1. 文档用途
 
 本文档是 `location/frontend/` 目录级维护基线，用于说明 Vue 前端当前真实状态、路由约定、API 契约、系统状态页展示规则和本地开发验证方式。后续修改前端代码时，应同步更新本文档。
@@ -284,7 +294,7 @@ wrapper 内路径不含 `/api/v1` 前缀（由 baseURL 拼接）。
 | 周期报告 | `api/reports.js` | **`USE_MOCK = false`**（F6-01） | `{ items: [], total: 0, limit }` / 详情 `{ report_id, report: null }` | `reports.vue` 在 `USE_MOCK===true` 时页顶「演示数据」；驾驶舱 `LatestReportCard` 空列表走 EmptyState |
 | 活跃预警 | `api/alerts.js` | **`USE_MOCK = false`**（F6-02） | `{ items: [], total: 0 }` / ack `{ alert_id, status }` | TopBar 角标读 `data.total`；`AlertDigest` 空列表走 EmptyState，无演示角标 |
 | 规则诊断 | `api/diagnosis.js` | **`USE_MOCK = false`** | 完整 `MOCK_DIAGNOSIS_DATA`（含 `route: 'rule'`） | 离线演示时临时切 true |
-| 智能分析运行 | `api/analysis.js` | **`USE_MOCK = false`** | `node_trace` 摘要 + `getRecentAnalysisRuns` 列表 | 离线演示时临时切 true |
+| 智能分析运行 | `api/analysis.js` | **`USE_MOCK = false`** | `node_trace` 摘要 + `alert_decision` 即时诊断兜底 + `getRecentAnalysisRuns` 列表 | 离线演示时临时切 true |
 | 日志明细 | `api/logs.js` | 无 mock | 真实 `searchLogs` / `aggregateLogs` | — |
 | 系统状态 | `api/system.js` | 无 mock | 真实接口 | — |
 
@@ -376,9 +386,11 @@ wrapper 内路径不含 `/api/v1` 前缀（由 baseURL 拼接）。
 **提交流程**（`diagnosis.vue`）：
 
 1. `DiagnosisEntryPanel` 基于选中的活跃预警、路由服务名与全局时间窗构造 payload；前端不再要求用户粘贴异常日志。
-2. `handleSubmit(payload)` 先写入运行中的上下文阶段 → `submitDiagnosis(payload)` → `enrichDiagnosis`（无 `affected_services` 时从 `input.service_name` 兜底），结论区及时刷新。
-3. `fetchNodeTrace(payload)` 后台触发 `triggerAnalysisRun({ trigger_type: 'diagnosis', trigger_event: payload.input })` → `node_trace`；`graph_failed` 时从 `e.response.data.data.node_trace` 降级，否则使用上下文取证/事件关联/根因推断/风险定级/结论成文五段兜底轨迹。
-4. 全局 `errorMessage` + 重试（保留 `lastPayload`）；`diagnosis.js` 或 `analysis.js` 任一 `USE_MOCK===true` 时页顶「演示数据」角标。
+2. `handleSubmit(payload)` 先触发 `submitDiagnosis(payload)`（`POST /diagnosis`），立即用 `data.diagnosis` 渲染单次规则诊断结论；该路径不依赖 LangGraph、报告写入或 ES 可写状态。
+3. 单次诊断成功后，页面后台调用 `triggerAnalysisRun({ trigger_type: 'rule', trigger_event, time_window })` 补充 `node_trace` 与深度报告；后台失败只写入非阻断提示，不清空单次诊断结论。
+4. 深度结果优先读取 `getReportDetail(report_id).data.report`；若详情未命中或返回 `report:null`，立即用 `/analysis/run` 的 `alert_decision.alert_candidate` 与 `alert_decision.explanation` 归一化为诊断字段。
+5. `node_trace` 来自 `/analysis/run`，规则子图节点经 `filterRuleSubgraphTrace` 过滤；`graph_failed` 时从 `e.response.data.data.node_trace` 降级，否则使用上下文取证/事件关联/根因推断/风险定级/结论成文五段兜底轨迹。
+6. 全局 `errorMessage` + 重试（保留 `lastPayload`）；`diagnosis.js` 或 `analysis.js` `USE_MOCK===true` 时页顶「演示数据」角标。
 
 **与总体规划差异**：`confidence` 在规则降级时由 `ConclusionPanel` 展示规则置信区间文案（非 LLM 百分数）；深度诊断入口（F6）可复用本页 `@submit` 契约。
 
@@ -419,7 +431,7 @@ wrapper 内路径不含 `/api/v1` 前缀（由 baseURL 拼接）。
 4. **降级**（`degraded===true`，即 `diagnosis.route` 为 `rule`/`rule_only`）：索引 1/2/3 为 LLM 阶段——无节点或仍为 `pending` 时标「已跳过」；规则成功完成的 LLM 阶段耗时后缀「· 降级」。
 5. **展示状态**：`success→done`、`failed→error`、`running→running`；展示文案为阶段中文名 + 耗时，非函数名。
 
-数据来源分工：`POST /diagnosis` **不返回** `node_trace`；诊断页推断图数据来自 `triggerAnalysisRun`，报告页阶段环数据来自 `getReportDetail.report.node_trace`。
+数据来源分工：`POST /diagnosis` 是单次诊断主路径，**不返回** `node_trace`；诊断页推断图数据来自后台 `triggerAnalysisRun`，深度结论优先来自报告详情、兜底来自同次运行的 `alert_decision`，报告页阶段环数据来自 `getReportDetail.report.node_trace`。
 
 ### 6.15 智能体展示耦合规范落地（总体规划 §5）
 
@@ -706,8 +718,8 @@ F7 验收（增强与体验抛光，可与 F6 并行验部分项）：
 | 日志监控（7 子页） | **可用（真实日志 + 图表）** | 中 | 明细 `searchLogs` + 图表带聚合；依赖后端 ES 数据 |
 | 业务漏斗 `/analysis/funnel` | **可用（F4+F7-02）** | 中 | 主漏斗 + 流失定位；时段对比 tab 编排就绪（`COMPARE_TAB_READY=false`） |
 | API wrapper `diagnosis.js` | **可用** | 中 | `submitDiagnosis` → `/diagnosis`；`USE_MOCK=false` |
-| API wrapper `analysis.js` | **可用** | 中 | `triggerAnalysisRun`（120s 超时）、`getRecentAnalysisRuns`；`USE_MOCK=false` |
-| 异常诊断 `/analysis/diagnosis` | **可用（F5+体验收口）** | 中 | 上下文驱动诊断 + 结论区粒子背板 + `LangGraphFlow` 推断图；`diagnosis`/`analysis` 默认真实接口 |
+| API wrapper `analysis.js` | **可用** | 低 | `triggerAnalysisRun`（120s 超时）、`getRecentAnalysisRuns`；`USE_MOCK=false` |
+| 异常诊断 `/analysis/diagnosis` | **可用（F5+体验收口+联调修复）** | 低 | 上下文驱动诊断 + 结论区粒子背板 + `LangGraphFlow` 推断图；报告详情未命中时用 `alert_decision` 即时结果兜底 |
 | 诊断组件 `analysis-diagnosis/` | **可用（F5+体验收口）** | 低 | Entry/Conclusion/Evidence/Topology/Suggestion + `LangGraphFlow`；`DiagnosisStageRing` 供报告页兼容 |
 | 调用链路 `/analysis/trace` | **可用（F5）** | 中 | `searchByTraceId` + query 深链 + 泳道瀑布 |
 | 链路组件 `analysis-trace/` | **可用（F5）** | 低 | `TraceSearchBar`（历史 localStorage）、`TraceWaterfall`（CSS 泳道） |
@@ -786,3 +798,10 @@ F7 验收（增强与体验抛光，可与 F6 并行验部分项）：
 | 2026-06-23 | **F7-06 DEV 文档收敛** | `frontend/DEV.md` | §6.19 F7 增强；§8 F7 验收；§10.1 F1~F7 里程碑总览 + §10.2 模块状态；§12 F7 日志 | 联调项见 §10.2 底部缺口清单 |
 | 2026-06-23 | **全量前后端联调修复 metrics** | `api/metrics.js` | 六模板改传 `template` 走 `POST /logs/aggregate` 预置路由，修复驾驶舱 error_code 白名单报错与 `extra.by_service` 缺失 | 需配合后端 `aggregate_by_template`；时间窗内无日志时指标仍为 0（数据时效问题） |
 | 2026-06-23 | **体验收口第一轮** | `assets/styles/index.css`、`layout/index.vue`、`layout/components/TopBar.vue`、`SidebarTreeNode.vue`、`components/common/*`、`components/common/charts/GaugeChart.vue`、`components/monitor/ChartBand.vue`、`ChartBandItem.vue`、`frontend/DEV.md` | 修复 `ChartBandItem` runtime template 导致监控图表空白；Gauge 标题/数值不再重叠；统一背景、卡片、侧栏、顶部栏、指标卡、空态与图表 overlay 的基础质感；`npm.cmd run build` 通过，浏览器抽查无控制台 warn/error | 下一轮重点：Dashboard 首屏重新编排、诊断页默认态信息密度、报告/预警页长文本与表格体验、系统页慢接口加载态 |
+| 2026-06-23 | **规则子图返回解析修复** | `views/analysis/diagnosis.vue`、`frontend/DEV.md` | `/analysis/run` 成功但 `/reports/{id}` 暂未读到详情时，诊断页改用同次返回的 `alert_decision.alert_candidate/explanation` 渲染结论、严重度、置信度、证据、建议与受影响服务；`npm.cmd run build` 通过 | 后端报告详情仍依赖 ES 写后读；前端保留详情优先、即时结果兜底策略 |
+| 2026-06-23 | **智能分析 5 页战术 UI 全量落地** | `package.json`、`package-lock.json`、`vite.config.js`、`components/common/AnalysisWorkbench.vue`、`TacticalKpiStrip.vue`、`G6RelationGraph.vue`、`DigitalTwinScene.vue`、`ReasoningInspector.vue`、`views/analysis/diagnosis.vue`、`reports.vue`、`alerts.vue`、`trace.vue`、`funnel.vue`、`frontend/DEV.md` | 按高密度战术工作台重排 5 个智能分析页面；新增 G6 关系图、Three.js 数字孪生态势、LangGraph 中间推理检查器、KPI 条与深色硬朗视觉基座；漏斗时间窗对比 tab 已启用；`npm.cmd run build` 通过；浏览器验证 5 个页面均可渲染，漏斗 tab 交互无新增 warn/error | G6/Three 带来较大独立 chunk，已在 `vite.config.js` 拆分；后续如追求首屏极限性能，可把分析路由进一步懒加载 |
+| 2026-06-24 | **智能分析 5 页低饱和硬朗风格与页面目的重排** | `components/common/AnalysisWorkbench.vue`、`TacticalKpiStrip.vue`、`ReasoningInspector.vue`、`G6RelationGraph.vue`、`DigitalTwinScene.vue`、`RiskLevelStrip.vue`、`HorizontalReportTimeline.vue`、`InsightArtifactPanel.vue`、`utils/chartTheme.js`、`views/analysis/diagnosis.vue`、`reports.vue`、`alerts.vue`、`trace.vue`、`funnel.vue`、`frontend/DEV.md` | 统一黑白灰高对比、斜切标识、蓝青状态光、红橙告警强调与低饱和配色；推理路径改为顶部 compact 次级组件；诊断页前置规则聚类/top_k/子图图谱；报告页改横向可缩放时间轴；预警页补购物高峰与成功预警持久化；调用链路页移除手动检索并消费预警链；漏斗页聚焦埋点分析产物与三维漏斗投影；Three.js 由服务环改为时间/风险/类型/次数多维投影；`npm.cmd run build` 通过；浏览器验证 5 个智能分析路由均可渲染且新错误为 0 | G6/Three 仍为大 chunk，当前通过 manualChunks 隔离；如后续追求首屏极限性能，可对分析页可视化组件进一步做路由级懒加载 |
+| 2026-06-24 | **智能分析页头部去重与 TopBar 承载** | `composables/usePageHeader.js`、`layout/components/TopBar.vue`、`components/common/AnalysisWorkbench.vue`、`frontend/DEV.md` | 新增页面头部状态 composable；`AnalysisWorkbench` 不再渲染 main 内部标题区，改为向全局 `TopBar` 注册 title/eyebrow/subtitle/tone，并将 actions 挂载后 Teleport 到顶部栏；分析页 `TopBar` 切换为低饱和硬朗深色样式，普通页面保持原头部；`npm.cmd run build` 通过；浏览器验证分析页仅 1 个 h1、`.analysis-workbench__header=0`、顶部 actions 可见、路由切换无新 error | actions 依赖顶部栏 `#topbar-page-actions` 容器；若未来改 Layout 顺序，需要保留该挂载点 |
+| 2026-06-24 | **智能分析 main 白边移除** | `layout/index.vue`、`components/common/AnalysisWorkbench.vue`、`frontend/DEV.md` | 为 `/analysis/*` 路由增加 `main--analysis` 布局模式，去掉 main 外层 `24px` padding 并改为深色背景；`AnalysisWorkbench` 去掉外边框和圆角，最小高度适配顶部分析头部，使智能分析工作台贴边铺满主内容区；`npm.cmd run build` 通过；浏览器验证 `mainPadding=0px`、工作台与 main `deltaLeft/deltaTop=0`、工作台 `border/radius=0`、无新 error | 该贴边策略仅作用于智能分析路由，Dashboard/监控/系统页仍保留原 main padding |
+| 2026-06-24 | **报告可视化填充与预警交互修正** | `views/analysis/reports.vue`、`views/analysis/alerts.vue`、`components/analysis-alerts/AlertTable.vue`、`frontend/DEV.md` | 周期体检报告中含 G6/Three 的面板改为 grid 填充，图谱和三维投影容器最小高度提升并撑满单元；预警中心严重度分区/服务图谱交互改为只刷新右侧“预警处置上下文”，不再打开抽屉；预警明细表格增加 430px 独立滚动区和 sticky 表头，避免整页被明细拉长；`npm.cmd run build` 通过；浏览器验证图谱/投影高度提升、表格 `overflowY=auto` 且内部可滚动 | 表格行点击仍保留打开详情抽屉，用于查看完整明细；严重度分区只做上下文选择 |
+| 2026-06-24 | **表格 UI 统一为低饱和硬朗风格** | `components/analysis-alerts/AlertTable.vue`、`components/common/LogTable.vue`、`frontend/DEV.md` | 统一 AlertTable 与 LogTable 的深色表格皮肤：低饱和黑灰背景、细边线、sticky 表头、深色滚动条、2px 斜切/硬朗按钮、低饱和状态色与 skeleton；保留预警表格独立滚动与日志表分页/展开/排序能力；`npm.cmd run build` 通过；浏览器验证预警表格背景/表头/文字色/滚动/sticky 均生效且无新 error | 当前项目仅这两套 `<table>` 组件；后续新增表格应复用这套视觉规则，避免再引入浅色表格 |

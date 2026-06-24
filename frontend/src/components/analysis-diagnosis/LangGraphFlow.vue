@@ -1,6 +1,6 @@
 <template>
-  <div class="langgraph-flow-card">
-    <header class="langgraph-flow-card__header">
+  <div class="langgraph-flow-card" :class="{ 'is-fill': fill }">
+    <header v-if="showHeader" class="langgraph-flow-card__header">
       <div>
         <p class="langgraph-flow-card__eyebrow">LangGraph Inference</p>
         <h3>推断路径</h3>
@@ -19,6 +19,7 @@
       :zoom-on-scroll="false"
       :pan-on-scroll="false"
       :prevent-scrolling="false"
+      :fit-view-options="fitViewOptions"
     >
       <template #node-diagnostic="{ data }">
         <div class="flow-node" :class="`flow-node--${data.status}`">
@@ -37,7 +38,9 @@ import { VueFlow } from '@vue-flow/core'
 
 const props = defineProps({
   nodeTrace: { type: Array, default: () => [] },
-  degraded: { type: Boolean, default: false }
+  degraded: { type: Boolean, default: false },
+  showHeader: { type: Boolean, default: true },
+  fill: { type: Boolean, default: false }
 })
 
 const BUSINESS_STAGES = [
@@ -124,7 +127,9 @@ const flowNodes = computed(() =>
   stageState.value.map((stage, index) => ({
     id: stage.key,
     type: 'diagnostic',
-    position: { x: index * 168, y: index % 2 === 0 ? 20 : 104 },
+    position: props.fill
+      ? { x: index * 188, y: index % 2 === 0 ? 24 : 132 }
+      : { x: index * 168, y: index % 2 === 0 ? 20 : 104 },
     data: {
       index: String(index + 1).padStart(2, '0'),
       label: stage.label,
@@ -137,6 +142,10 @@ const flowNodes = computed(() =>
     }
   }))
 )
+
+const fitViewOptions = computed(() => ({
+  padding: props.fill ? 0.015 : 0.12
+}))
 
 const flowEdges = computed(() =>
   BUSINESS_STAGES.slice(0, -1).map((stage, index) => {
@@ -166,6 +175,19 @@ const flowEdges = computed(() =>
   background:
     radial-gradient(circle at 12% 14%, rgba(37, 99, 235, 0.08), transparent 28%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  box-shadow: var(--shadow-card);
+}
+
+.langgraph-flow-card.is-fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 380px;
+  padding: 8px;
+  background:
+    radial-gradient(circle at 12% 14%, rgba(37, 99, 235, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  border-color: var(--color-border);
   box-shadow: var(--shadow-card);
 }
 
@@ -210,6 +232,13 @@ const flowEdges = computed(() =>
   background-size: 24px 24px;
 }
 
+.langgraph-flow-card.is-fill .langgraph-flow {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 352px;
+  background-size: 20px 20px;
+}
+
 .flow-node {
   min-width: 124px;
   padding: 10px 12px;
@@ -217,6 +246,14 @@ const flowEdges = computed(() =>
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+}
+
+.langgraph-flow-card.is-fill .flow-node {
+  min-width: 146px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
 }
 
 .flow-node__index {
@@ -234,11 +271,21 @@ const flowEdges = computed(() =>
   font-size: 12px;
 }
 
+.langgraph-flow-card.is-fill .flow-node strong {
+  color: var(--color-text);
+  font-size: 13px;
+}
+
 .flow-node small {
   display: block;
   margin-top: 4px;
   color: var(--color-text-secondary);
   font-size: 10px;
+}
+
+.langgraph-flow-card.is-fill .flow-node small {
+  color: var(--color-text-secondary);
+  font-size: 11px;
 }
 
 .flow-node--done {

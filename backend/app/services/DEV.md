@@ -17,15 +17,16 @@
 | `app/services/tools/` | 10 个 LangChain StructuredTool + registry | M2 已实现；`create_mcp_server` 占位（M7） |
 | `app/services/report/` | `analysis-results-*` 报告持久化 | M4 已实现 |
 | `app/services/alert/` | `alerts-*` 预警持久化、去重、确认状态机 | M5 已实现 |
-| `app/services/docker_status.py` | Docker Compose 容器状态只读查询 | 可用 |
+| `app/services/docker_status.py` | Docker Compose 容器状态只读查询；本地 Docker 不可用时按网关端口探测 Kafka/ES/Logstash/Kibana | 可用 |
 | `app/services/pipeline_verification.py` | 全链路验证任务封装 | 可用 |
 
 ## 3. Docker 状态查询约定
 
-- `docker_status.py` 只做只读查询，当前通过 Docker CLI 执行 `docker ps -a` 与 `docker stats --no-stream`。
+- `docker_status.py` 只做只读查询，优先通过 Docker CLI 执行 `docker ps -a` 与 `docker stats --no-stream`。
 - 查询范围由 `Settings.docker_project_name` 与 `Settings.docker_monitored_services` 控制，默认 project 为 `location`。
 - 服务返回归一化状态：`running`、`down`、`unknown`。
-- Docker CLI 不存在、Docker API 不可访问或权限不足时，不抛出到 API 层；返回 `available=false`、`error` 和各服务 `unknown` 状态。
+- Docker CLI 不存在、Docker API 不可访问、权限不足，或本地 project 中缺少目标容器时，不抛出到 API 层；对 `kafka`、`elasticsearch`、`logstash`、`kibana` 使用 `config/gateway.yaml` 推导出的宿主机端口做 TCP 探测兜底。
+- 网关探测端口：Kafka 使用 `settings.kafka_bootstrap_servers`；Elasticsearch 使用 `settings.elasticsearch_hosts`；Kibana 使用 `settings.kibana_base_url`；Logstash 使用同一网关宿主机的 `9600`。
 - 不在该服务中启动、停止、删除或重启容器。
 
 ## 4. 模块状态表
@@ -58,3 +59,4 @@
 | 2026-06-22 | **M4 收口**：定时子图 + 报告持久化 | `analysis/graph_scheduled.py`、`scheduler.py`、`report/` | scheduler→write_report 闭环 | `graph_main` 仍 M6 |
 | 2026-06-22 | **M5 收口**：规则子图 + 预警闭环 | `diagnosis/rule_*`、`analysis/graph_rule.py`、`trigger_scanner.py`、`alert/` | scan_once→子图→报告+预警 | 频率规则聚合待 P1 |
 | 2026-06-22 | 同步 Services DEV 至 M5 现状 | `app/services/DEV.md` | 边界表、状态表、开发日志与里程碑对齐 | — |
+| 2026-06-23 | 为 Docker 状态增加网关端口探测兜底 | `docker_status.py`、`app/services/DEV.md` | 小组成员本地后端即使没有本地 Docker 容器，也能按 `gateway.yaml` 探测远端 Kafka/ES/Logstash/Kibana 并返回 `gateway-*` 运行态；兜底探测异常会降级为单服务 `unknown`，不能打挂 `/system/status` | 网关探测只能确认端口可达，不返回远端容器 CPU/内存统计 |

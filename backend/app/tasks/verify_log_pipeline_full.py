@@ -35,13 +35,12 @@ _DOTENV_ROUTE_KEYS = {
 
 
 def _load_dotenv_preserving_gateway_yaml() -> None:
-    """读取 .env 密钥，但避免 .env 的路由项（值为空时）压过 config/gateway.yaml。"""
+    """读取 .env 密钥，但避免 .env 的路由项压过 config/gateway.yaml。"""
+    existing_route_env = {key for key in _DOTENV_ROUTE_KEYS if key in os.environ}
     load_dotenv(_early_backend.parent / ".env")
     load_dotenv(_early_backend / ".env")
-    # .env 中设为空字符串的路由项，恢复为空（让 gateway.yaml 取值生效）
-    for key in _DOTENV_ROUTE_KEYS:
-        if os.environ.get(key, "").strip() == "":
-            os.environ.pop(key, None)
+    for key in _DOTENV_ROUTE_KEYS - existing_route_env:
+        os.environ.pop(key, None)
 
 
 _load_dotenv_preserving_gateway_yaml()
@@ -415,14 +414,13 @@ def main() -> int:
         print(f"[错误] 无法创建 Elasticsearch 客户端: {exc}", file=sys.stderr)
         return 6
 
-    # ping 偶发返回 False（kafka-python 库会干扰 socket），改为仅记录不再熔断
     try:
-        ping_ok = bool(es.ping())
+        if not es.ping():
+            print("[错误] Elasticsearch ping 失败，请检查 ELASTICSEARCH_HOSTS 与账号密码", file=sys.stderr)
+            return 6
     except Exception as exc:  # noqa: BLE001
-        ping_ok = False
-        print(f"[警告] Elasticsearch ping 异常（继续）: {exc}")
-    if not ping_ok:
-        print("[警告] Elasticsearch ping 返回 False（继续）—后续检索阶段会再校验")
+        print(f"[错误] Elasticsearch 连接失败: {exc}", file=sys.stderr)
+        return 6
 
     try:
         pre_cnt = _es_count_docs(es, index_pattern)

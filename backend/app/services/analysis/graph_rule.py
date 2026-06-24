@@ -294,7 +294,7 @@ def _node_correlate_events(state: AnalysisState) -> dict[str, Any]:
         sorted_logs = sorted(
             logs,
             key=lambda item: _parse_iso_datetime(item.get("timestamp"))
-            or datetime.min,
+            or datetime.min.replace(tzinfo=timezone.utc),
         )
 
         service_counter: Counter[str] = Counter()
@@ -668,16 +668,20 @@ def _log_dedupe_key(log: dict[str, Any]) -> str:
 
 def _parse_iso_datetime(value: Any) -> datetime | None:
     if isinstance(value, datetime):
-        return value
-    if not isinstance(value, str) or not value.strip():
+        dt = value
+    elif isinstance(value, str) and value.strip():
+        text = value.strip()
+        if text.endswith("Z"):
+            text = f"{text[:-1]}+00:00"
+        try:
+            dt = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+    else:
         return None
-    text = value.strip()
-    if text.endswith("Z"):
-        text = f"{text[:-1]}+00:00"
-    try:
-        return datetime.fromisoformat(text)
-    except ValueError:
-        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def _coerce_str(value: Any) -> str:

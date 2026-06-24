@@ -36,8 +36,13 @@
         @click="goAlerts"
         @keydown.enter="goAlerts"
       >
-        <SeverityBadge :level="item.severity" :label="formatAlertType(item.alert_type)" />
-        <span class="alert-digest__service">{{ item.affected_service || '未知服务' }}</span>
+        <div class="alert-digest__row-top">
+          <SeverityBadge :level="item.severity" :label="formatAlertType(item.alert_type)" />
+          <span class="alert-digest__service">{{ item.affected_service || '未知服务' }}</span>
+        </div>
+        <p class="alert-digest__title">
+          {{ item.title || `${formatAlertType(item.alert_type)}待处理` }}
+        </p>
         <time class="alert-digest__time tabular-nums">{{ formatTime(item.created_at) }}</time>
       </li>
     </ul>
@@ -64,6 +69,7 @@ const loading = ref(false)
 const error = ref('')
 
 const ALERT_TYPE_LABELS = {
+  unknown_error: '异常事件',
   error_rate_spike: '错误率',
   latency_degradation: '耗时',
   security_risk: '安全',
@@ -100,16 +106,43 @@ usePolling(fetchAlerts, 30000, true)
 </script>
 
 <style scoped>
+.alert-digest {
+  padding: 14px;
+  border-radius: 2px;
+  background: #ffffff;
+}
+
+.alert-digest:hover {
+  transform: none;
+}
+
 .alert-digest__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #0f2438;
 }
 
 .alert-digest__header h2 {
   margin: 0;
+  color: #0f2438;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.alert-digest__header h2::before {
+  display: inline-block;
+  width: 5px;
+  height: 15px;
+  margin-right: 8px;
+  background: #ef4444;
+  transform: skewX(-16deg);
+  vertical-align: -2px;
+  content: '';
 }
 
 .alert-digest__list {
@@ -118,27 +151,49 @@ usePolling(fetchAlerts, 30000, true)
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 0;
+  border: 1px solid #c4d0dc;
 }
 
 .alert-digest__row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  min-height: 96px;
+  padding: 11px 12px;
+  border: 0;
+  border-bottom: 1px solid #dbe3ea;
+  border-radius: 0;
+  background: #ffffff;
   cursor: pointer;
   transition: box-shadow 180ms ease, transform 180ms ease;
 }
 
 .alert-digest__row:hover,
 .alert-digest__row:focus-visible {
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+  background: #f1f5f9;
+  box-shadow: inset 3px 0 0 #ef4444;
+  transform: none;
   outline: none;
+}
+
+.alert-digest__row-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.alert-digest__title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .alert-digest__service {
@@ -146,29 +201,36 @@ usePolling(fetchAlerts, 30000, true)
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--color-text);
 }
 
 .alert-digest__time {
-  font-size: 12px;
+  align-self: flex-end;
+  font-size: 10px;
   color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .alert-digest__footer {
-  margin-top: var(--spacing-sm);
+  margin-top: 10px;
   text-align: right;
 }
 
 .alert-digest__link {
-  font-size: 13px;
-  color: var(--color-primary);
+  padding: 5px 9px;
+  border: 1px solid #0f2438;
+  font-size: 11px;
+  font-weight: 900;
+  color: #0f2438;
   text-decoration: none;
 }
 
 .alert-digest__link:hover {
-  text-decoration: underline;
+  background: #0f2438;
+  color: #ffffff;
+  text-decoration: none;
 }
 
 .alert-digest__retry {

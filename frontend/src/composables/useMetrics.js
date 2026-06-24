@@ -1,4 +1,4 @@
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted, toValue } from 'vue'
 import { useTimeRange } from './useTimeRange.js'
 import {
   USE_MOCK,
@@ -7,7 +7,8 @@ import {
   queryLatency,
   queryBehaviorFunnel,
   querySecurity,
-  queryInfraHealth
+  queryInfraHealth,
+  queryGroupedLogs
 } from '../api/metrics.js'
 
 const RANGE_DEBOUNCE_MS = 300
@@ -39,7 +40,7 @@ const TEMPLATE_QUERY_MAP = {
  * @param {{ template: MetricsTemplate, logType?: string, extraFilters?: Record<string, unknown>, immediate?: boolean }} options
  * @returns {{ data: import('vue').Ref<object|null>, loading: import('vue').Ref<boolean>, error: import('vue').Ref<string|null>, refresh: () => Promise<void>, isMock: import('vue').ComputedRef<boolean> }}
  */
-export function useMetrics({ template, logType, extraFilters, immediate = true } = {}) {
+export function useMetrics({ template, groupBy, logType, extraFilters, immediate = true } = {}) {
   const { range } = useTimeRange()
 
   const data = ref(null)
@@ -51,14 +52,18 @@ export function useMetrics({ template, logType, extraFilters, immediate = true }
   let unmounted = false
   let rangeDebounceTimer = null
 
-  const queryFn = TEMPLATE_QUERY_MAP[template]
+  const queryFn = groupBy ? queryGroupedLogs : TEMPLATE_QUERY_MAP[template]
 
   function buildPayload() {
+    const resolvedExtraFilters = toValue(extraFilters)
     return {
       start_time: new Date(range.value.start).toISOString(),
       end_time: new Date(range.value.end).toISOString(),
       ...(logType ? { log_types: [logType] } : {}),
-      ...(extraFilters && typeof extraFilters === 'object' ? extraFilters : {})
+      ...(groupBy ? { group_by: groupBy } : {}),
+      ...(resolvedExtraFilters && typeof resolvedExtraFilters === 'object'
+        ? resolvedExtraFilters
+        : {})
     }
   }
 
@@ -66,7 +71,7 @@ export function useMetrics({ template, logType, extraFilters, immediate = true }
     if (unmounted) return
 
     if (!queryFn) {
-      error.value = `未知的 metrics 模板: ${template}`
+      error.value = `未知的聚合配置: ${template || groupBy || '未指定'}`
       data.value = null
       loading.value = false
       return
@@ -94,7 +99,7 @@ export function useMetrics({ template, logType, extraFilters, immediate = true }
   }
 
   watch(
-    range,
+    [range, () => JSON.stringify(toValue(extraFilters) ?? {})],
     () => {
       if (rangeDebounceTimer != null) {
         clearTimeout(rangeDebounceTimer)

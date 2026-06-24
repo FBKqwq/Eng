@@ -20,6 +20,7 @@ const props = defineProps({
   title: { type: String, default: '' },
   unit: { type: String, default: '' },
   loading: { type: Boolean, default: false },
+  compact: { type: Boolean, default: false },
   height: { type: String, default: '240px' },
   placeholder: { type: String, default: '仪表盘占位：等待聚合接口' }
 })
@@ -39,12 +40,12 @@ const chartOption = computed(() => {
         max: props.max,
         startAngle: 205,
         endAngle: -25,
-        center: ['50%', '54%'],
-        radius: '86%',
-        progress: { show: true, width: 12 },
+        center: ['50%', props.compact ? '50%' : '54%'],
+        radius: props.compact ? '82%' : '86%',
+        progress: { show: true, width: props.compact ? 9 : 12 },
         axisLine: {
           lineStyle: {
-            width: 12,
+            width: props.compact ? 9 : 12,
             color: [
               [0.6, chartPalette.danger],
               [0.8, chartPalette.warning],
@@ -54,27 +55,29 @@ const chartOption = computed(() => {
         },
         axisTick: { show: false },
         splitLine: { show: false },
-        axisLabel: {
-          distance: 10,
-          color: chartPalette.label,
-          fontSize: 10
-        },
+        axisLabel: props.compact
+          ? { show: false }
+          : {
+              distance: 10,
+              color: chartPalette.label,
+              fontSize: 10
+            },
         pointer: {
-          length: '48%',
-          width: 5,
+          length: props.compact ? '43%' : '48%',
+          width: props.compact ? 4 : 5,
           itemStyle: { color: chartPalette.primary }
         },
         title: {
-          offsetCenter: [0, '36%'],
+          offsetCenter: [0, props.compact ? '26%' : '36%'],
           color: chartPalette.label,
-          fontSize: 12,
+          fontSize: props.compact ? 10 : 12,
           fontWeight: 600
         },
         detail: {
           valueAnimation: true,
           formatter: `{value}${props.unit}`,
-          offsetCenter: [0, '58%'],
-          fontSize: 28,
+          offsetCenter: [0, props.compact ? '52%' : '58%'],
+          fontSize: props.compact ? 24 : 28,
           fontWeight: 800,
           color: chartPalette.text
         },

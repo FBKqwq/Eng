@@ -1,37 +1,38 @@
 export const chartPalette = {
-  primary: '#3b82f6',
-  cyan: '#0891b2',
-  violet: '#7c3aed',
-  success: '#16a34a',
-  warning: '#d97706',
-  danger: '#dc2626',
-  slate: '#475569',
-  grid: 'rgba(148, 163, 184, 0.18)',
-  label: '#64748b',
-  text: '#1e293b',
-  tooltipBg: 'rgba(15, 23, 42, 0.88)'
+  primary: '#6f9eac',
+  cyan: '#7aaeb3',
+  violet: '#8f98ad',
+  success: '#6d9482',
+  warning: '#b28b5a',
+  danger: '#b96a61',
+  slate: '#59636e',
+  grid: 'rgba(175, 186, 198, 0.18)',
+  label: '#8e9aa6',
+  text: '#e5ebf1',
+  tooltipBg: 'rgba(10, 13, 18, 0.96)'
 }
 
 export const chartColors = [
-  '#3b82f6',  // primary blue - 降低饱和
-  '#0891b2',  // cyan
-  '#7c3aed',  // violet
-  '#16a34a',  // success
-  '#d97706',  // warning
-  '#dc2626'   // danger
+  chartPalette.primary,
+  chartPalette.warning,
+  chartPalette.success,
+  chartPalette.danger,
+  chartPalette.violet,
+  chartPalette.slate
 ]
 
 export function tooltipStyle() {
   return {
     backgroundColor: chartPalette.tooltipBg,
-    borderWidth: 0,
+    borderColor: 'rgba(188, 199, 210, 0.24)',
+    borderWidth: 1,
     padding: [8, 10],
     textStyle: {
-      color: '#f8fafc',
+      color: '#eef3f7',
       fontSize: 12,
-      fontWeight: 600
+      fontWeight: 700
     },
-    extraCssText: 'box-shadow: 0 14px 34px rgba(15, 23, 42, 0.28); border-radius: 8px;'
+    extraCssText: 'box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34); border-radius: 3px;'
   }
 }
 
@@ -76,13 +77,13 @@ export function chartGrid({ legend = false, horizontal = false } = {}) {
   return {
     left: horizontal ? 12 : 10,
     right: 18,
-    top: 22,
+    top: 20,
     bottom: legend ? 42 : 16,
     containLabel: true
   }
 }
 
-export function softArea(color, opacity = 0.16) {
+export function softArea(color, opacity = 0.12) {
   return {
     opacity,
     color: {

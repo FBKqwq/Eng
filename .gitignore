@@ -24,3 +24,5 @@ Thumbs.db
 
 # 本地配置（含密钥），结构示例见 backend/config/
 backend/config/
+
+classend/

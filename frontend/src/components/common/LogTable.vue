@@ -427,38 +427,76 @@ function handleCellClick(col, row, event) {
 <style scoped>
 .log-table {
   margin-top: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  border: 1px solid #111827;
+  border-radius: 0;
+  background: #ffffff;
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 6px 6px 0 rgba(15, 23, 42, 0.08);
 }
 
 .log-table-header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg);
+  min-height: 42px;
+  padding: 8px 14px 8px 30px;
+  border-bottom: 2px solid #111827;
+  background: #f8fafc;
+}
+
+.log-table-header::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 18px;
+  background: #111827;
+  clip-path: polygon(0 0, 100% 0, 58% 100%, 0 100%);
+  content: '';
 }
 
 .log-table-header h3 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #111827;
 }
 
 .log-table-meta {
-  font-size: 12px;
-  color: var(--color-text-secondary);
+  padding: 2px 8px;
+  border-left: 3px solid #111827;
+  background: #e5e7eb;
+  font-size: 11px;
+  font-weight: 800;
+  color: #374151;
 }
 
 .log-table-scroll {
-  overflow-x: auto;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
   transition: opacity 180ms ease;
+  background:
+    linear-gradient(90deg, rgba(15, 23, 42, 0.025) 0 1px, transparent 1px 32px),
+    #ffffff;
+  background-size: 32px 32px;
+}
+
+.log-table-scroll::-webkit-scrollbar,
+.expand-json::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.log-table-scroll::-webkit-scrollbar-track,
+.expand-json::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.log-table-scroll::-webkit-scrollbar-thumb,
+.expand-json::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border: 2px solid #f1f5f9;
 }
 
 .log-table-scroll.is-refreshing {
@@ -470,20 +508,30 @@ function handleCellClick(col, row, event) {
   width: 100%;
   min-width: 640px;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 11px;
   table-layout: fixed;
 }
 
 .log-table-grid th {
-  padding: 10px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 10px;
   text-align: left;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #111827;
+  border-right: 1px solid #d1d5db;
+  border-bottom: 1px solid #111827;
+  background: #e5e7eb;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.log-table-grid th:last-child {
+  border-right: 0;
 }
 
 .log-table-grid th.sortable {
@@ -491,19 +539,20 @@ function handleCellClick(col, row, event) {
 }
 
 .log-table-grid th.sortable:hover {
-  color: var(--color-text);
-  background: #eceff3;
+  color: #000000;
+  background: #cbd5e1;
 }
 
 .log-table-grid th.sorted {
-  color: var(--color-primary);
+  color: #000000;
+  box-shadow: inset 0 -3px 0 #111827;
 }
 
 .th-unit {
   margin-left: 2px;
   font-size: 11px;
-  color: var(--color-text-muted);
-  font-weight: 400;
+  color: #64748b;
+  font-weight: 800;
 }
 
 .sort-indicator {
@@ -536,11 +585,16 @@ function handleCellClick(col, row, event) {
 }
 
 .log-table-grid td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-text);
+  padding: 7px 10px;
+  border-right: 1px solid #edf0f3;
+  border-bottom: 1px solid #d8dee6;
+  color: #1f2937;
   vertical-align: middle;
   overflow: hidden;
+}
+
+.log-table-grid td:last-child {
+  border-right: 0;
 }
 
 .data-row {
@@ -548,12 +602,18 @@ function handleCellClick(col, row, event) {
   transition: background-color 160ms ease;
 }
 
+.data-row:nth-child(even) {
+  background: #f8fafc;
+}
+
 .data-row:hover {
-  background: #f9fafb;
+  background: #eef2f6;
+  box-shadow: inset 3px 0 0 #111827;
 }
 
 .data-row.expanded {
-  background: #f3f4f6;
+  background: #e5e7eb;
+  box-shadow: inset 3px 0 0 #111827;
 }
 
 .col-expand {
@@ -570,11 +630,17 @@ function handleCellClick(col, row, event) {
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
+  border: 1px solid #9ca3af;
+  border-radius: 0;
+  background: #ffffff;
+  color: #111827;
   cursor: pointer;
+}
+
+.expand-btn:hover {
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
 }
 
 .expand-icon {
@@ -608,11 +674,11 @@ function handleCellClick(col, row, event) {
 
 .cell-mono {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .cell-muted {
-  color: var(--color-text-muted);
+  color: #94a3b8;
 }
 
 .cell-inline-actions {
@@ -625,16 +691,23 @@ function handleCellClick(col, row, event) {
 .cell-action-btn {
   flex-shrink: 0;
   padding: 2px 6px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-primary);
+  border: 1px solid #64748b;
+  border-radius: 0;
+  background: #ffffff;
+  color: #334155;
   font-size: 11px;
+  font-weight: 900;
   cursor: pointer;
 }
 
 .cell-action-btn--ghost {
-  color: var(--color-text-secondary);
+  color: #64748b;
+}
+
+.cell-action-btn:hover {
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
 }
 
 .http-status-pill {
@@ -643,40 +716,40 @@ function handleCellClick(col, row, event) {
   justify-content: center;
   min-width: 42px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .http-status-pill.tone-success {
-  background: var(--color-success-bg);
-  color: var(--color-success);
+  background: #dcfce7;
+  color: #166534;
 }
 
 .http-status-pill.tone-warning {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .http-status-pill.tone-danger {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .http-status-pill.tone-info {
-  background: var(--color-info-bg);
-  color: var(--color-info);
+  background: #e0f2fe;
+  color: #075985;
 }
 
 .http-status-pill.tone-muted {
-  background: var(--color-bg);
-  color: var(--color-text-muted);
+  background: #e5e7eb;
+  color: #475569;
 }
 
 .expand-row td {
   padding: 0;
-  background: #f9fafb;
+  background: #f8fafc;
 }
 
 .expand-panel {
@@ -686,15 +759,17 @@ function handleCellClick(col, row, event) {
 .expand-panel__hint {
   margin: 0 0 8px;
   font-size: 11px;
-  color: var(--color-text-muted);
+  color: #64748b;
 }
 
 .expand-json {
   margin: 0;
   padding: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  border: 1px solid #cbd5e1;
+  border-left: 4px solid #111827;
+  border-radius: 0;
+  background: #ffffff;
+  color: #0f172a;
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;
@@ -710,8 +785,8 @@ function handleCellClick(col, row, event) {
 .skeleton-block {
   display: block;
   height: 12px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #eceff3 0%, #f5f6f8 50%, #eceff3 100%);
+  border-radius: 0;
+  background: linear-gradient(90deg, #e5e7eb 0%, #f8fafc 50%, #e5e7eb 100%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.2s ease-in-out infinite;
 }
@@ -729,8 +804,8 @@ function handleCellClick(col, row, event) {
   justify-content: space-between;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-bg);
+  border-top: 2px solid #111827;
+  background: #f8fafc;
 }
 
 .page-size-control {
@@ -738,14 +813,15 @@ function handleCellClick(col, row, event) {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: #475569;
 }
 
 .page-size-select {
   padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  border: 1px solid #64748b;
+  border-radius: 0;
+  background: #ffffff;
+  color: #111827;
   font-size: 13px;
 }
 
@@ -757,11 +833,18 @@ function handleCellClick(col, row, event) {
 
 .page-btn {
   padding: 6px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  border: 1px solid #64748b;
+  border-radius: 0;
+  background: #ffffff;
+  color: #111827;
   font-size: 13px;
   cursor: pointer;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
 }
 
 .page-btn:disabled {
@@ -771,16 +854,16 @@ function handleCellClick(col, row, event) {
 
 .page-info {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: #475569;
 }
 
 .retry-btn {
   margin-top: var(--spacing-sm);
   padding: 6px 16px;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  background: var(--color-primary);
-  color: var(--color-surface);
+  border: 1px solid #111827;
+  border-radius: 0;
+  background: #111827;
+  color: #ffffff;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;

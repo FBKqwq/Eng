@@ -65,6 +65,7 @@
         :chart-templates="meta.chartTemplates"
         :log-type="meta.logType"
         :primary-chart-id="meta.primaryChartId"
+        :filters="filters"
       />
     </section>
 
@@ -273,16 +274,27 @@ onUnmounted(() => {
 }
 
 .monitor-page-header {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--spacing-md);
   padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  padding-left: 30px;
+  border: 1px solid #111827;
+  border-radius: 0;
   background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 6px 6px 0 rgba(15, 23, 42, 0.08);
+}
+
+.monitor-page-header::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 18px;
+  background: #111827;
+  clip-path: polygon(0 0, 100% 0, 58% 100%, 0 100%);
+  content: '';
 }
 
 .monitor-page-header__title {
@@ -309,6 +321,8 @@ onUnmounted(() => {
 
 .stat-item {
   min-width: 88px;
+  padding-left: 10px;
+  border-left: 2px solid #111827;
 }
 
 .stat-item dt {
@@ -331,9 +345,9 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: var(--spacing-sm);
   padding: 10px var(--spacing-md);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
+  border: 1px dashed #64748b;
+  border-radius: 0;
+  background: #f8fafc;
 }
 
 .query-summary__chips {
@@ -356,7 +370,7 @@ onUnmounted(() => {
   max-width: 100%;
   padding: 4px 8px 4px 10px;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--color-surface);
   font-size: 12px;
   color: var(--color-text-secondary);
@@ -399,6 +413,17 @@ onUnmounted(() => {
 
 .monitor-section {
   margin-bottom: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.monitor-section:hover {
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
 }
 
 .log-monitor-shell__detail {
