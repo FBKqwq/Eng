@@ -11,6 +11,7 @@
       :key="tpl.id"
       :config="tpl"
       :log-type="logType"
+      :filters="filters"
       :class="{ 'chart-band__primary': isPrimary(tpl) }"
     />
   </div>
@@ -23,7 +24,8 @@ import ChartBandItem from './ChartBandItem.vue'
 const props = defineProps({
   chartTemplates: { type: Array, default: () => [] },
   logType: { type: String, default: '' },
-  primaryChartId: { type: String, default: '' }
+  primaryChartId: { type: String, default: '' },
+  filters: { type: Object, default: () => ({}) }
 })
 
 function isPrimary(tpl) {

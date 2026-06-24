@@ -2,6 +2,8 @@
  * /logs/aggregate 响应 → 图表 props 解析（按 template + chartType + variant）
  */
 
+import { mapQueryFiltersToAggregateFilters } from './logQueryContract.js'
+
 const FUNNEL_DEFAULT_STEPS = [
   'page_view',
   'product_click',
@@ -67,7 +69,7 @@ export function resolveChartData(config, aggregateData) {
     return resolveTrafficChart(config, chartType, buckets, extra)
   }
 
-  return genericTermsChart(config, chartType, buckets)
+  return genericAggregationChart(config, chartType, buckets)
 }
 
 function inferVariant(config) {
@@ -350,6 +352,61 @@ function genericTermsChart(config, chartType, buckets) {
   }
 }
 
+function genericAggregationChart(config, chartType, buckets) {
+  if (chartType === 'trend') {
+    const groupedKeys = []
+    const groupedKeySet = new Set()
+
+    for (const bucket of buckets) {
+      for (const child of bucket?.extra?.sub_buckets ?? []) {
+        const key = formatBucketKey(child.key)
+        if (!groupedKeySet.has(key)) {
+          groupedKeySet.add(key)
+          groupedKeys.push(key)
+        }
+      }
+    }
+
+    if (groupedKeys.length) {
+      const series = groupedKeys.map((key) => ({
+        name: key,
+        data: buckets.map((bucket) => {
+          const child = (bucket?.extra?.sub_buckets ?? []).find(
+            (item) => formatBucketKey(item.key) === key
+          )
+          return bucketCount(child)
+        })
+      }))
+      return {
+        chartProps: {
+          categories: buckets.map((bucket) => formatBucketKey(bucket.key)),
+          series
+        },
+        meta: {
+          unit: '条/桶',
+          caliber: config.description || `按 ${config.groupBy || '维度'} 分组的时间序列`,
+          empty: !series.some((item) => item.data.some((value) => value > 0))
+        }
+      }
+    }
+
+    const data = buckets.map((bucket) => bucketCount(bucket))
+    return {
+      chartProps: {
+        categories: buckets.map((bucket) => formatBucketKey(bucket.key)),
+        series: [{ name: config.title || '日志量', data, area: true }]
+      },
+      meta: {
+        unit: '条/桶',
+        caliber: config.description || '日志量时间序列',
+        empty: !data.some((value) => value > 0)
+      }
+    }
+  }
+
+  return genericTermsChart(config, chartType, buckets)
+}
+
 function emptyResult(config) {
   return {
     chartProps: { categories: [], series: [], data: [] },
@@ -361,11 +418,14 @@ function emptyResult(config) {
   }
 }
 
-export function buildMetricsPayload(config, logType) {
+export function buildMetricsPayload(config, logType, activeFilters = {}) {
   const opts = config.options ?? {}
+  const { service_names: serviceNames, ...queryFilters } = activeFilters || {}
+  const fieldFilters = mapQueryFiltersToAggregateFilters(queryFilters)
   const payload = {
-    ...(logType ? { log_types: [logType] } : {}),
-    top_n: opts.top_n ?? 10
+    top_n: opts.top_n ?? 10,
+    ...(serviceNames?.length ? { service_names: serviceNames } : {}),
+    ...(Object.keys(fieldFilters).length ? { filters: fieldFilters } : {})
   }
 
   if (config.chartType === 'trend' || opts.interval) {

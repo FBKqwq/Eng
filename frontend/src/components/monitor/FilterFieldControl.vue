@@ -150,7 +150,7 @@ function clearField() {
   height: 36px;
   padding: 0 10px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: var(--color-surface);
   font-size: 13px;
   color: var(--color-text);

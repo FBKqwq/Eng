@@ -12,12 +12,13 @@
           :loading="loading"
           title="综合健康分"
           unit="分"
-          height="220px"
+          compact
+          height="176px"
           placeholder="健康分：等待流量/错误/耗时聚合"
         />
       </div>
 
-      <div class="health-overview__stats page-grid page-grid-5">
+      <div class="health-overview__stats">
         <StatCard label="日志总量" :value="totalLogsDisplay" />
         <StatCard label="错误率" :value="errorRateDisplay" />
         <StatCard label="平均响应" :value="avgLatencyDisplay" />
@@ -31,7 +32,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import GaugeChart from '../common/charts/GaugeChart.vue'
 import StatCard from '../common/StatCard.vue'
 import { useMetrics } from '../../composables/useMetrics.js'
@@ -46,6 +47,7 @@ const latency = useMetrics({ template: 'latency' })
 
 const pipelineTone = ref('unknown')
 const activeAlertCount = ref(0)
+const emit = defineEmits(['telemetry-change'])
 
 const loading = computed(
   () => traffic.loading.value || errors.loading.value || latency.loading.value
@@ -158,6 +160,31 @@ const healthScore = computed(() => {
   return Math.round(errorScore * 0.4 + pipelineScore * 0.3 + alertScore * 0.3)
 })
 
+const telemetryState = computed(() => {
+  const total = totalLogCount.value
+  const bucketCount = traffic.data.value?.buckets?.length || 1
+  const averagePerBucket = total / bucketCount
+  const flowRate = Math.min(1, averagePerBucket / 160)
+  const anomalyRate = Math.min(1, (errorRate.value ?? 0) * 12)
+  const acceleration = Math.min(1, activeAlertCount.value / 12)
+  const score = healthScore.value ?? 75
+
+  return {
+    intensity: Math.min(0.92, 0.46 + flowRate * 0.38),
+    flowRate,
+    anomalyRate,
+    acceleration,
+    healthScore: score,
+    accentColor: score < 60 ? '#ef4444' : score < 80 ? '#f59e0b' : '#38bdf8'
+  }
+})
+
+watch(
+  telemetryState,
+  (value) => emit('telemetry-change', value),
+  { immediate: true }
+)
+
 async function loadPipelineTone() {
   try {
     const res = await getSystemStatus()
@@ -183,16 +210,44 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.health-overview {
+  padding: 14px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  border-radius: 0;
+  background: linear-gradient(135deg, rgba(4, 14, 27, 0.8), rgba(9, 27, 47, 0.7));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+.health-overview:hover {
+  border-color: rgba(125, 211, 252, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transform: none;
+}
+
 .health-overview__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 8px;
 }
 
 .health-overview__header h2 {
   margin: 0;
+  color: #f8fbff;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+}
+
+.health-overview__header h2::before {
+  display: inline-block;
+  width: 4px;
+  height: 14px;
+  margin-right: 8px;
+  background: #38bdf8;
+  transform: skewX(-16deg);
+  vertical-align: -2px;
+  content: '';
 }
 
 .health-overview__mock {
@@ -207,8 +262,8 @@ onMounted(() => {
 
 .health-overview__body {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) 1fr;
-  gap: var(--spacing-md);
+  grid-template-columns: 174px minmax(0, 1fr);
+  gap: 10px;
   align-items: stretch;
 }
 
@@ -217,7 +272,44 @@ onMounted(() => {
 }
 
 .health-overview__stats {
-  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.health-overview__stats :deep(.stat-card) {
+  min-height: 74px;
+  padding: 10px 11px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 0;
+  background: rgba(7, 20, 36, 0.62);
+  box-shadow: none;
+}
+
+.health-overview__stats :deep(.stat-card:last-child) {
+  grid-column: 1 / -1;
+}
+
+.health-overview__stats :deep(.stat-card::before) {
+  right: auto;
+  width: 4px;
+  height: 100%;
+  border-radius: 0;
+  background: #38bdf8;
+}
+
+.health-overview__stats :deep(.label) {
+  font-size: 10px;
+  color: #91a9bf;
+}
+
+.health-overview__stats :deep(.value-row) {
+  margin-top: 4px;
+}
+
+.health-overview__stats :deep(.value) {
+  font-size: 20px;
+  color: #f8fbff;
 }
 
 .health-overview__error {

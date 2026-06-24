@@ -164,9 +164,10 @@ watch(() => props.logType, loadFields)
   flex-direction: column;
   gap: var(--spacing-md);
   padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px solid #111827;
+  border-radius: 0;
   background: var(--color-surface);
+  box-shadow: 6px 6px 0 rgba(15, 23, 42, 0.06);
 }
 
 .fallback-banner {
@@ -194,9 +195,21 @@ watch(() => props.logType, loadFields)
 }
 
 .filter-toolbar__title {
+  position: relative;
+  padding-left: 14px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 900;
+  letter-spacing: 0.08em;
   color: var(--color-text);
+}
+
+.filter-toolbar__title::before {
+  position: absolute;
+  inset: 1px auto 1px 0;
+  width: 7px;
+  background: #111827;
+  transform: skewX(-18deg);
+  content: '';
 }
 
 .filter-toolbar__actions {
@@ -213,7 +226,7 @@ watch(() => props.logType, loadFields)
   height: 32px;
   padding: 0 12px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: var(--color-bg);
   color: var(--color-text-secondary);
   font-size: 12px;
@@ -300,7 +313,7 @@ watch(() => props.logType, loadFields)
   height: 32px;
   padding: 0 14px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: var(--color-bg);
   color: var(--color-text-secondary);
   font-size: 12px;

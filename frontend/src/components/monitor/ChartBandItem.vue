@@ -66,15 +66,20 @@ import EmptyState from '../common/EmptyState.vue'
 
 const props = defineProps({
   config: { type: Object, required: true },
-  logType: { type: String, default: '' }
+  logType: { type: String, default: '' },
+  filters: { type: Object, default: () => ({}) }
 })
 
 const lastRefreshedAt = ref(null)
+const metricsPayload = computed(() =>
+  buildMetricsPayload(props.config, props.logType, props.filters)
+)
 
 const { data, loading, error, refresh, isMock } = useMetrics({
   template: props.config.template,
+  groupBy: props.config.groupBy,
   logType: props.logType || undefined,
-  extraFilters: buildMetricsPayload(props.config, props.logType),
+  extraFilters: metricsPayload,
   immediate: true
 })
 
@@ -113,9 +118,9 @@ const refreshedLabel = computed(() => {
   min-width: 0;
   padding: var(--spacing-md);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
+  border: 1px solid #111827;
+  border-radius: 0;
+  box-shadow: 6px 6px 0 rgba(15, 23, 42, 0.06);
   transition:
     transform var(--transition-fast),
     box-shadow var(--transition-fast),
@@ -124,8 +129,8 @@ const refreshedLabel = computed(() => {
 
 .chart-band-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(59, 130, 246, 0.34);
-  box-shadow: var(--shadow-card-hover);
+  border-color: #111827;
+  box-shadow: 8px 8px 0 rgba(15, 23, 42, 0.1);
 }
 
 .chart-band-card__header {
@@ -136,10 +141,21 @@ const refreshedLabel = computed(() => {
 }
 
 .chart-band-card__title {
+  position: relative;
+  padding-left: 13px;
   margin: 0 0 4px;
   color: var(--color-text);
   font-size: 15px;
   font-weight: 700;
+}
+
+.chart-band-card__title::before {
+  position: absolute;
+  inset: 1px auto 1px 0;
+  width: 7px;
+  background: #111827;
+  transform: skewX(-18deg);
+  content: '';
 }
 
 .chart-band-card__caliber {

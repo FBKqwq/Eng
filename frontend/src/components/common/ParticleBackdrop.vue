@@ -36,6 +36,22 @@ const props = defineProps({
   accentColor: {
     type: String,
     default: ''
+  },
+  flowRate: {
+    type: Number,
+    default: 0
+  },
+  anomalyRate: {
+    type: Number,
+    default: 0
+  },
+  acceleration: {
+    type: Number,
+    default: 0
+  },
+  healthScore: {
+    type: Number,
+    default: 100
   }
 })
 
@@ -43,7 +59,7 @@ const reducedMotion = ref(false)
 let motionQuery = null
 let motionHandler = null
 
-const particleId = computed(() => `particles-${props.variant}-${Math.round(props.intensity * 100)}`)
+const particleId = computed(() => `particles-${props.variant}-telemetry`)
 
 const accent = computed(() => {
   if (props.accentColor && !props.accentColor.startsWith('var(')) return props.accentColor
@@ -53,9 +69,20 @@ const accent = computed(() => {
 })
 
 const particleOptions = computed(() => {
-  const density = Math.round(42 + props.intensity * 76)
-  const linkOpacity = 0.08 + props.intensity * 0.16
-  const particleOpacity = 0.16 + props.intensity * 0.2
+  const normalizedFlow = Math.min(1, Math.max(0, props.flowRate))
+  const normalizedAnomaly = Math.min(1, Math.max(0, props.anomalyRate))
+  const normalizedAcceleration = Math.min(1, Math.max(0, props.acceleration))
+  const normalizedHealth = Math.min(1, Math.max(0, props.healthScore / 100))
+  const density = Math.round(58 + props.intensity * 64 + normalizedFlow * 86)
+  const linkOpacity = 0.12 + props.intensity * 0.14 + normalizedHealth * 0.1
+  const particleOpacity = 0.3 + props.intensity * 0.22 + normalizedFlow * 0.2
+  const speed = 0.35 + props.intensity * 0.35 + normalizedFlow * 1.55
+  const anomalyColors =
+    normalizedAnomaly > 0.42
+      ? ['#dc2626', '#f97316']
+      : normalizedAnomaly > 0.16
+        ? ['#d97706']
+        : []
 
   return {
     fullScreen: { enable: false },
@@ -67,15 +94,21 @@ const particleOptions = computed(() => {
         value: density,
         density: { enable: true, width: 900, height: 520 }
       },
-      color: { value: [accent.value, '#06b6d4', '#7c3aed'] },
+      color: { value: [accent.value, '#06b6d4', '#38bdf8', ...anomalyColors] },
       shape: { type: 'circle' },
       opacity: {
-        value: { min: 0.08, max: particleOpacity },
-        animation: { enable: true, speed: 0.35, sync: false }
+        value: { min: 0.16, max: particleOpacity },
+        animation: { enable: true, speed: 0.52, sync: false }
       },
       size: {
-        value: { min: 0.7, max: props.variant === 'diagnosis' ? 2.4 : 2 },
+        value: { min: 0.7, max: props.variant === 'dashboard' ? 3.2 : 2.4 },
         animation: { enable: true, speed: 1.2, sync: false }
+      },
+      zIndex: {
+        value: { min: 0, max: 100 },
+        opacityRate: 5,
+        sizeRate: 4,
+        velocityRate: 3
       },
       links: {
         enable: true,
@@ -86,11 +119,20 @@ const particleOptions = computed(() => {
       },
       move: {
         enable: true,
-        direction: props.variant === 'pipeline' ? 'right' : 'none',
-        speed: 0.24 + props.intensity * 0.42,
+        direction: ['pipeline', 'dashboard'].includes(props.variant) ? 'right' : 'none',
+        speed,
         outModes: { default: 'out' },
-        random: false,
-        straight: false
+        random: normalizedAnomaly > 0.28,
+        straight: normalizedAnomaly < 0.12,
+        gravity: {
+          enable: normalizedAcceleration > 0.05,
+          acceleration: 0.04 + normalizedAcceleration * 0.34,
+          inverse: false
+        },
+        attract: {
+          enable: normalizedHealth > 0.72,
+          rotate: { x: 900, y: 900 }
+        }
       }
     },
     interactivity: {
@@ -145,6 +187,13 @@ onUnmounted(() => {
     linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.86));
 }
 
+.particle-backdrop--dashboard .particle-backdrop__base {
+  background:
+    radial-gradient(ellipse 72% 74% at 16% 36%, rgba(14, 116, 144, 0.22), transparent 70%),
+    radial-gradient(ellipse 62% 72% at 78% 18%, rgba(37, 99, 235, 0.2), transparent 72%),
+    linear-gradient(118deg, #07111f 0%, #0a1c31 52%, #0b1626 100%);
+}
+
 .particle-backdrop--pipeline .particle-backdrop__base {
   background:
     radial-gradient(ellipse 80% 45% at 30% 45%, rgba(6, 182, 212, 0.1), transparent 68%),
@@ -184,6 +233,12 @@ onUnmounted(() => {
     var(--color-surface) 100%
   );
   pointer-events: none;
+}
+
+.particle-backdrop--dashboard .particle-backdrop__veil {
+  background:
+    linear-gradient(90deg, rgba(4, 12, 24, 0.06), rgba(7, 17, 31, 0.18)),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.01), rgba(2, 8, 18, 0.18));
 }
 
 .particle-backdrop--static .particle-backdrop__veil {

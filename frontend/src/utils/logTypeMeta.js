@@ -19,7 +19,8 @@
 /**
  * @typedef {object} ChartTemplateConfig
  * @property {string} id
- * @property {'traffic'|'errors'|'latency'|'behavior_funnel'|'security'|'infra_health'} template
+ * @property {'traffic'|'errors'|'latency'|'behavior_funnel'|'security'|'infra_health'} [template]
+ * @property {'log_level'|'service_name'|'log_type'|'event_type'|'error_code'|'status_code'|'user_id'|'client_ip'} [groupBy]
  * @property {string} title
  * @property {string} description
  * @property {'trend'|'bar'|'pie'} chartType
@@ -101,7 +102,7 @@ export const logTypeMeta = {
       { id: 'latency', label: '接口耗时', hint: 'response_time_ms 分位' },
       { id: 'top_service', label: '活跃服务', hint: 'service_name 分布' }
     ],
-    primaryChartId: 'app-errors-trend',
+    primaryChartId: 'app-level-trend',
     columns: [
       COL.time,
       COL.level,
@@ -121,29 +122,28 @@ export const logTypeMeta = {
     ],
     chartTemplates: [
       {
-        id: 'app-errors-trend',
-        template: 'errors',
-        title: '错误量趋势',
-        description: 'ERROR 或 HTTP≥400 按 1 分钟桶计数',
+        id: 'app-level-trend',
+        groupBy: 'log_level',
+        title: '日志级别趋势',
+        description: '仅聚合 application 日志，按级别拆分时间序列',
         chartType: 'trend',
         primary: true,
-        options: { interval: '1m', variant: 'trend' }
+        options: { interval: '1m' }
       },
       {
-        id: 'app-latency-top',
-        template: 'latency',
-        title: 'Top N 慢服务 (P95)',
-        description: '各服务 response_time_ms P95 分位',
+        id: 'app-service-top',
+        groupBy: 'service_name',
+        title: '活跃服务 Top N',
+        description: 'application 日志按 service_name 聚合',
         chartType: 'bar',
-        options: { top_n: 10, percentile: 'p95' }
+        options: { top_n: 10 }
       },
       {
         id: 'app-error-code-dist',
-        template: 'errors',
+        groupBy: 'error_code',
         title: 'error_code 分布',
-        description: '应用日志 error_code Top 分布',
-        chartType: 'pie',
-        options: { variant: 'error_code' }
+        description: '仅聚合 application 日志的 error_code',
+        chartType: 'pie'
       }
     ],
     levelColorKey: 'log-level'
@@ -161,7 +161,7 @@ export const logTypeMeta = {
       { id: 'users', label: '活跃用户', hint: 'user_id 去重' },
       { id: 'events', label: '行为事件', hint: 'event_type 计数' }
     ],
-    primaryChartId: 'behavior-funnel',
+    primaryChartId: 'behavior-event-trend',
     columns: [COL.time, COL.user, COL.action, COL.page, COL.product, COL.eventType],
     drillableFields: ['user_id', 'session_id'],
     fallbackFilters: [
@@ -171,19 +171,28 @@ export const logTypeMeta = {
     ],
     chartTemplates: [
       {
-        id: 'behavior-funnel',
-        template: 'behavior_funnel',
-        title: '转化漏斗',
-        description: 'page_view → pay_button_click 五步计数与转化率',
-        chartType: 'bar',
-        primary: true
+        id: 'behavior-event-trend',
+        groupBy: 'event_type',
+        title: '行为事件趋势',
+        description: '仅聚合 behavior 日志，按 event_type 拆分时间序列',
+        chartType: 'trend',
+        primary: true,
+        options: { interval: '1m' }
       },
       {
-        id: 'behavior-events',
+        id: 'behavior-funnel',
         template: 'behavior_funnel',
-        title: '漏斗步骤明细',
-        description: '同漏斗数据，横向对比各步',
+        title: '转化步骤分布',
+        description: 'page_view → pay_button_click 五步计数',
         chartType: 'pie'
+      },
+      {
+        id: 'behavior-user-top',
+        groupBy: 'user_id',
+        title: '活跃用户 Top N',
+        description: 'behavior 日志按 user_id 聚合',
+        chartType: 'bar',
+        options: { top_n: 10 }
       }
     ],
     levelColorKey: 'default'
@@ -201,7 +210,7 @@ export const logTypeMeta = {
       { id: 'status', label: '状态码', hint: '4xx/5xx 占比' },
       { id: 'latency', label: 'request_time', hint: 'upstream 耗时' }
     ],
-    primaryChartId: 'web-traffic-trend',
+    primaryChartId: 'web-status-trend',
     columns: [COL.time, COL.uri, COL.statusCode, COL.duration, COL.upstream, COL.ua],
     drillableFields: ['request_uri', 'trace_id'],
     fallbackFilters: [
@@ -211,29 +220,28 @@ export const logTypeMeta = {
     ],
     chartTemplates: [
       {
-        id: 'web-traffic-trend',
-        template: 'traffic',
-        title: '请求量趋势',
-        description: 'application + web_server 日志量（模板固定）',
+        id: 'web-status-trend',
+        groupBy: 'status_code',
+        title: '状态码趋势',
+        description: '仅聚合 web_server 日志，按状态码拆分时间序列',
         chartType: 'trend',
         primary: true,
         options: { interval: '1m' }
       },
       {
         id: 'web-status-dist',
-        template: 'errors',
+        groupBy: 'status_code',
         title: '状态码分布',
-        description: 'HTTP status_code 分布',
-        chartType: 'pie',
-        options: { variant: 'status_code' }
+        description: 'web_server 日志 HTTP 状态码分布',
+        chartType: 'pie'
       },
       {
-        id: 'web-latency-top',
-        template: 'latency',
-        title: '慢服务 P95',
-        description: 'web_server + application 延迟分位',
+        id: 'web-service-top',
+        groupBy: 'service_name',
+        title: '服务请求 Top N',
+        description: 'web_server 日志按 service_name 聚合',
         chartType: 'bar',
-        options: { top_n: 10, percentile: 'p95' }
+        options: { top_n: 10 }
       }
     ],
     levelColorKey: 'http-status'
@@ -251,7 +259,7 @@ export const logTypeMeta = {
       { id: 'metric', label: '指标值', hint: 'metric_value' },
       { id: 'resource', label: '资源占用', hint: 'cpu/memory/disk' }
     ],
-    primaryChartId: 'perf-latency-bar',
+    primaryChartId: 'perf-service-trend',
     columns: [COL.time, COL.service, COL.metricName, COL.metricValue, COL.host],
     drillableFields: ['service_name'],
     fallbackFilters: [
@@ -261,19 +269,27 @@ export const logTypeMeta = {
     ],
     chartTemplates: [
       {
-        id: 'perf-latency-bar',
-        template: 'latency',
-        title: 'P95 对比',
-        description: '含 performance 类型的延迟分位',
-        chartType: 'bar',
+        id: 'perf-service-trend',
+        groupBy: 'service_name',
+        title: '性能采样趋势',
+        description: '仅聚合 performance 日志，按服务拆分采样量',
+        chartType: 'trend',
         primary: true,
-        options: { percentile: 'p95', top_n: 8 }
+        options: { interval: '1m', top_n: 8 }
       },
       {
-        id: 'perf-infra-pie',
-        template: 'infra_health',
-        title: '组件 CPU 均值',
-        description: 'component 分组 cpu_percent 均值',
+        id: 'perf-service-top',
+        groupBy: 'service_name',
+        title: '性能样本 Top 服务',
+        description: 'performance 日志按 service_name 聚合',
+        chartType: 'bar',
+        options: { top_n: 10 }
+      },
+      {
+        id: 'perf-level-dist',
+        groupBy: 'log_level',
+        title: '采样级别分布',
+        description: 'performance 日志 log_level 分布',
         chartType: 'pie'
       }
     ],
@@ -292,7 +308,7 @@ export const logTypeMeta = {
       { id: 'blocked', label: '拦截次数', hint: 'is_blocked' },
       { id: 'top_ip', label: '风险 IP', hint: 'client_ip Top N' }
     ],
-    primaryChartId: 'sec-risk-dist',
+    primaryChartId: 'sec-event-trend',
     columns: [COL.time, COL.eventType, COL.risk, COL.ip, COL.rule, COL.status],
     drillableFields: ['client_ip', 'trace_id'],
     fallbackFilters: [
@@ -302,29 +318,28 @@ export const logTypeMeta = {
     ],
     chartTemplates: [
       {
+        id: 'sec-event-trend',
+        groupBy: 'event_type',
+        title: '安全事件趋势',
+        description: '仅聚合 security 日志，按 event_type 拆分时间序列',
+        chartType: 'trend',
+        primary: true,
+        options: { interval: '1m' }
+      },
+      {
         id: 'sec-risk-dist',
         template: 'security',
         title: '风险级分布',
         description: 'security 日志 risk_level 计数',
-        chartType: 'pie',
-        primary: true,
-        options: { variant: 'risk_level' }
+        chartType: 'pie'
       },
       {
         id: 'sec-ip-top',
-        template: 'security',
+        groupBy: 'client_ip',
         title: 'Top N 风险 IP',
         description: 'client_ip 访问次数 Top N',
         chartType: 'bar',
-        options: { group_by: 'client_ip', top_n: 10, variant: 'client_ip' }
-      },
-      {
-        id: 'sec-block-bar',
-        template: 'security',
-        title: '拦截统计',
-        description: '被拦截或 403 的事件计数',
-        chartType: 'bar',
-        options: { variant: 'blocked' }
+        options: { top_n: 10 }
       }
     ],
     levelColorKey: 'risk-level'
@@ -342,7 +357,7 @@ export const logTypeMeta = {
       { id: 'cpu', label: 'CPU', hint: 'cpu_percent 均值' },
       { id: 'lag', label: 'Kafka lag', hint: '需关键字检索 lag 字段' }
     ],
-    primaryChartId: 'infra-component-health',
+    primaryChartId: 'infra-service-trend',
     columns: [COL.time, COL.component, COL.resource, COL.status, COL.summary],
     drillableFields: ['component'],
     fallbackFilters: [
@@ -352,20 +367,28 @@ export const logTypeMeta = {
     ],
     chartTemplates: [
       {
+        id: 'infra-service-trend',
+        groupBy: 'service_name',
+        title: '基础设施事件趋势',
+        description: '仅聚合 infrastructure 日志，按服务拆分时间序列',
+        chartType: 'trend',
+        primary: true,
+        options: { interval: '1m' }
+      },
+      {
         id: 'infra-component-health',
         template: 'infra_health',
         title: '组件 CPU 均值',
-        description: 'infrastructure 日志按 component 的 cpu_percent 均值',
-        chartType: 'pie',
-        primary: true
-      },
-      {
-        id: 'infra-component-bar',
-        template: 'infra_health',
-        title: '组件对比',
-        description: '各 component 文档数与 CPU 均值',
+        description: 'infrastructure + performance 的 component CPU 均值',
         chartType: 'bar',
         options: { top_n: 10 }
+      },
+      {
+        id: 'infra-event-dist',
+        groupBy: 'event_type',
+        title: '基础设施事件分布',
+        description: 'infrastructure 日志 event_type 分布',
+        chartType: 'pie'
       }
     ],
     levelColorKey: 'resource-status'
@@ -383,7 +406,7 @@ export const logTypeMeta = {
       { id: 'operators', label: '操作人', hint: 'operator 关键字' },
       { id: 'manual', label: '人工操作', hint: 'is_manual' }
     ],
-    primaryChartId: 'audit-summary',
+    primaryChartId: 'audit-event-trend',
     columns: [COL.time, COL.operator, COL.auditAction, COL.target, COL.change, COL.status],
     drillableFields: ['operator_id'],
     fallbackFilters: [
@@ -393,13 +416,28 @@ export const logTypeMeta = {
     ],
     chartTemplates: [
       {
-        id: 'audit-summary',
-        template: 'traffic',
+        id: 'audit-event-trend',
+        groupBy: 'event_type',
         title: '审计事件量趋势',
-        description: 'traffic 模板不含 audit 索引，仅展示 application/web 流量作参考；明细以表格为准',
+        description: '仅聚合 audit 日志，按 event_type 拆分时间序列',
         chartType: 'trend',
         primary: true,
         options: { interval: '1h' }
+      },
+      {
+        id: 'audit-operator-top',
+        groupBy: 'user_id',
+        title: '操作人 Top N',
+        description: 'audit 日志按 user_id 聚合',
+        chartType: 'bar',
+        options: { top_n: 10 }
+      },
+      {
+        id: 'audit-level-dist',
+        groupBy: 'log_level',
+        title: '审计级别分布',
+        description: 'audit 日志 log_level 分布',
+        chartType: 'pie'
       }
     ],
     levelColorKey: 'default'

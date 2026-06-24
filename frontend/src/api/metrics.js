@@ -37,6 +37,9 @@ function queryByTemplate(template, payload = {}) {
   })
 }
 
+/** 按日志类型和聚合字段执行通用聚合，用于 7 个监控子页的差异化分析。 */
+export const queryGroupedLogs = (payload = {}) => aggregateLogs(payload)
+
 /** 流量趋势模板 */
 export const queryTraffic = (payload) =>
   queryByTemplate('traffic', { interval: '1m', ...payload })

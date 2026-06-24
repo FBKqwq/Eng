@@ -119,11 +119,11 @@ function emitToggle() {
 }
 
 .leaf-link.active {
-  color: #fff;
+  color: var(--sidebar-active-text);
   background:
-    linear-gradient(90deg, rgba(37, 99, 235, 0.32), rgba(8, 145, 178, 0.16)),
+    var(--sidebar-active-gradient),
     var(--color-sidebar-active);
-  border-color: rgba(96, 165, 250, 0.4);
+  border-color: var(--sidebar-active-border);
   font-weight: 600;
 }
 
