@@ -1,6 +1,12 @@
 <template>
   <div class="log-qa-assistant">
     <div class="page-header">
+      <button @click="goBack" class="back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+        返回
+      </button>
       <h1 class="title">AI 日志问答助手</h1>
       <p class="subtitle">基于大语言模型的智能日志分析与问答</p>
     </div>
@@ -15,17 +21,31 @@
               <span class="time">{{ currentTime }}</span>
             </div>
             <p class="message-text">
-              您好！我是AI日志问答助手，我可以帮您：
+              您好！我是您的AI日志助手，很高兴为您服务！😊
+            </p>
+            <p class="message-text">
+              我可以帮助您查询和分析系统日志，支持多种自然语言提问方式。
             </p>
             <ul class="capabilities">
               <li>🔍 查询特定服务的日志</li>
               <li>⚠️ 分析错误和异常</li>
               <li>📊 生成日志摘要</li>
               <li>📈 识别趋势和模式</li>
+              <li>🏷️ 智能日志分类</li>
+              <li>🎯 根因分析增强</li>
+              <li>🔮 趋势预测</li>
+              <li>💡 智能修复建议</li>
             </ul>
             <p class="message-text">
-              请问您想查询什么？
+              您可以试试这些问题：
             </p>
+            <div class="quick-questions">
+              <button class="quick-question" @click="sendQuickQuestion('最近有什么错误？')">最近有什么错误？</button>
+              <button class="quick-question" @click="sendQuickQuestion('订单服务状态如何？')">订单服务状态如何？</button>
+              <button class="quick-question" @click="sendQuickQuestion('帮我总结一下日志')">帮我总结一下日志</button>
+              <button class="quick-question" @click="sendQuickQuestion('分析一下根因')">分析一下根因</button>
+              <button class="quick-question" @click="sendQuickQuestion('预测一下趋势')">预测一下趋势</button>
+            </div>
           </div>
         </div>
 
@@ -43,7 +63,7 @@
               <span class="sender">{{ msg.type === 'user' ? '我' : 'AI 助手' }}</span>
               <span class="time">{{ msg.time }}</span>
             </div>
-            <p class="message-text">{{ msg.question }}</p>
+            <p v-if="msg.type === 'user'" class="message-text">{{ msg.question }}</p>
             <div v-if="msg.type === 'bot'" class="bot-response">
               <div class="confidence-badge">
                 置信度: {{ (msg.confidence * 100).toFixed(0) }}%
@@ -119,7 +139,14 @@
 </template>
 
 <script setup>import { ref, computed, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 import { askLogQA } from '../../../api/log_qa.js';
+
+const router = useRouter();
+
+function goBack() {
+  router.back();
+}
 const inputMessage = ref('');
 const messages = ref([]);
 const isLoading = ref(false);
@@ -128,7 +155,11 @@ const quickQuestions = [
  '最近有哪些错误？',
  '订单服务的状态如何？',
  '帮我总结今天的日志',
- '分析一下系统趋势'
+ '分析一下系统趋势',
+ '帮我分类这些日志',
+ '分析问题根因',
+ '预测系统趋势',
+ '给出修复建议'
 ];
 const currentTime = computed(() => {
  const now = new Date();
@@ -194,14 +225,45 @@ function scrollToBottom() {
 
 <style scoped>
 .log-qa-assistant {
-  min-height: 100vh;
+  min-height: 100%;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   padding: 20px;
+  box-sizing: border-box;
 }
 
 .page-header {
   text-align: center;
   margin-bottom: 20px;
+  position: relative;
+}
+
+.back-btn {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #8892b0;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.back-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .title {
@@ -504,6 +566,30 @@ function scrollToBottom() {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.quick-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.quick-question {
+  padding: 6px 14px;
+  background: rgba(102, 126, 234, 0.15);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 20px;
+  color: #a5b4fc;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.quick-question:hover {
+  background: rgba(102, 126, 234, 0.3);
+  border-color: rgba(102, 126, 234, 0.5);
+  transform: translateY(-1px);
 }
 
 .tips-panel {

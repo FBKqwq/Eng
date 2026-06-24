@@ -2,7 +2,14 @@
   <div class="layout">
     <aside class="sidebar">
       <div class="brand">
-        <h2>日志分析系统</h2>
+        <div class="brand-title">
+          <h2>日志分析系统</h2>
+          <router-link to="/analysis/yw/ym" class="ai-assistant-btn" title="AI日志问答助手">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </router-link>
+        </div>
         <p>ELK + Kafka + LangGraph</p>
       </div>
       <nav class="sidebar-nav" aria-label="主导航">
@@ -28,7 +35,10 @@ import TopBar from './components/TopBar.vue'
 import PipelineHealthDot from './components/PipelineHealthDot.vue'
 
 const route = useRoute()
-const isAnalysisRoute = computed(() => String(route.path || '').startsWith('/analysis/'))
+const isAnalysisRoute = computed(() => {
+  const path = String(route.path || '')
+  return path.startsWith('/analysis/') && !path.startsWith('/analysis/yw/ym')
+})
 
 provideTimeRange()
 </script>
@@ -60,11 +70,46 @@ provideTimeRange()
   padding: 22px 16px 16px;
   border-bottom: 1px solid var(--color-sidebar-border);
 }
+.brand-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .brand h2 {
   margin: 0;
   font-size: 17px;
   font-weight: 800;
   color: #fff;
+}
+.ai-assistant-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  animation: pulse 2s infinite;
+}
+.ai-assistant-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+.ai-assistant-btn svg {
+  width: 16px;
+  height: 16px;
+}
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.6);
+  }
 }
 .brand p {
   margin: 5px 0 0;

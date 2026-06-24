@@ -16,7 +16,7 @@ import request from './request'
  */
 export function logAnalysis(params) {
   return request({
-    url: '/api/v1/log_analysis',
+    url: '/log_analysis',
     method: 'post',
     data: params
   })
@@ -29,7 +29,7 @@ export function logAnalysis(params) {
  */
 export function analyzePattern(params) {
   return request({
-    url: '/api/v1/log_analysis/pattern',
+    url: '/log_analysis/pattern',
     method: 'post',
     data: params
   })
@@ -42,7 +42,7 @@ export function analyzePattern(params) {
  */
 export function detectAnomaly(params) {
   return request({
-    url: '/api/v1/log_analysis/anomaly',
+    url: '/log_analysis/anomaly',
     method: 'post',
     data: params
   })
@@ -55,7 +55,7 @@ export function detectAnomaly(params) {
  */
 export function analyzeCluster(params) {
   return request({
-    url: '/api/v1/log_analysis/cluster',
+    url: '/log_analysis/cluster',
     method: 'post',
     data: params
   })

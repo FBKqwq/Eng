@@ -18,19 +18,14 @@ export const menuTree = [
       { title: '审计日志', path: '/monitor/audit' }
     ]
   },
-  {
-    title: '智能分析',
+  { title: '智能分析',
     icon: 'analysis',
     children: [
       { title: '异常诊断中心', path: '/analysis/diagnosis' },
       { title: '周期体检报告', path: '/analysis/reports' },
       { title: '预警中心', path: '/analysis/alerts' },
       { title: '调用链路追踪', path: '/analysis/trace' },
-      { title: '业务漏斗洞察', path: '/analysis/funnel' },
-      { title: '异常预测中心', path: '/yw/yc' },
-      { title: '智能日志分析', path: '/yw/yy' },
-      { title: '智能根因分析', path: '/yw/yl' },
-      { title: 'AI日志问答助手', path: '/yw/ym' }
+      { title: '业务漏斗洞察', path: '/analysis/funnel' }
     ]
   },
   {
@@ -40,6 +35,15 @@ export const menuTree = [
       { title: '链路健康与验证', path: '/system/pipeline' },
       { title: '组件运行状态', path: '/system/components' },
       { title: '配置快照', path: '/system/config' }
+    ]
+  },
+  {
+    title: 'yangxixian',
+    icon: 'analysis',
+    children: [
+      { title: '异常预测中心', path: '/yangxixian/prediction' },
+      { title: '智能日志分析', path: '/yangxixian/log-analysis' },
+      { title: '智能根因分析', path: '/yangxixian/root-cause' }
     ]
   }
 ]

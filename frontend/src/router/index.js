@@ -124,22 +124,22 @@ const routes = [
         component: SystemConfig,
         meta: { title: '配置快照' }
       },
-      // 旧路由重定向
+      // yangxixian 模块
       {
-        path: 'yw/yc',
-        name: 'yw-prediction',
+        path: 'yangxixian/prediction',
+        name: 'yangxixian-prediction',
         component: YwPrediction,
         meta: { title: '异常预测中心' }
       },
       {
-        path: 'yw/yy',
-        name: 'yw-log-analysis',
+        path: 'yangxixian/log-analysis',
+        name: 'yangxixian-log-analysis',
         component: YwLogAnalysis,
         meta: { title: '智能日志分析' }
       },
       {
-        path: 'yw/yl',
-        name: 'yw-root-cause',
+        path: 'yangxixian/root-cause',
+        name: 'yangxixian-root-cause',
         component: YwRootCause,
         meta: { title: '智能根因分析' }
       },
@@ -149,10 +149,20 @@ const routes = [
         component: YwLogQA,
         meta: { title: 'AI日志问答助手' }
       },
+      // 旧路由重定向（保持兼容性）
+      { path: 'yw/yc', redirect: '/yangxixian/prediction' },
+      { path: 'yw/yy', redirect: '/yangxixian/log-analysis' },
+      { path: 'yw/yl', redirect: '/yangxixian/root-cause' },
       { path: 'diagnosis', redirect: '/analysis/diagnosis' },
       { path: 'results', redirect: '/analysis/reports' },
       { path: 'system', redirect: '/system/components' }
     ]
+  },
+  {
+    path: '/analysis/yw/ym',
+    name: 'analysis-yw-log-qa-standalone',
+    component: YwLogQA,
+    meta: { title: 'AI日志问答助手' }
   },
   {
     path: '/temp/developer',
