@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Generic, Optional, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_serializer
 
 T = TypeVar("T")
 
@@ -36,9 +36,18 @@ class ErrorInfo(BaseModel):
 
 
 class ApiResponse(BaseModel, Generic[T]):
-    ok: bool = True
-    data: Optional[T] = None
-    error: Optional[ErrorInfo] = None
+    ok: bool = Field(True, serialization_alias="ok")
+    data: Optional[T] = Field(None, serialization_alias="data")
+    error: Optional[ErrorInfo] = Field(None, serialization_alias="error")
+    
+    @model_serializer
+    def serialize(self) -> dict:
+        """确保所有字段都被序列化，包括默认值"""
+        return {
+            "ok": self.ok,
+            "data": self.data,
+            "error": self.error
+        }
 
 
 def ok_envelope(data: T | None = None) -> ApiResponse[T]:

@@ -1,11 +1,15 @@
 import json
+import socket
 import subprocess
 from typing import Dict, Iterable, Optional
+from urllib.parse import urlparse
 
+from app.core.config import settings
 from app.schemas.system import ContainerStatus, DockerStatusResponse
 
 
 DOCKER_TIMEOUT_SECONDS = 8
+GATEWAY_PROBE_TIMEOUT_SECONDS = 2.5
 
 
 def get_docker_status(project_name: str, monitored_services: Iterable[str]) -> DockerStatusResponse:
@@ -14,12 +18,13 @@ def get_docker_status(project_name: str, monitored_services: Iterable[str]) -> D
     try:
         containers = _read_compose_containers(project_name)
         stats = _read_container_stats()
-    except (FileNotFoundError, subprocess.SubprocessError, OSError, json.JSONDecodeError) as exc:
+    except Exception as exc:  # noqa: BLE001
+        fallback = _build_gateway_probe_statuses(services)
         return DockerStatusResponse(
             project=project_name,
-            available=False,
-            error=str(exc),
-            containers={service: _unknown_container(service, f"Docker status unavailable: {exc}") for service in services},
+            available=any(item.status == "running" for item in fallback.values()),
+            error=f"Docker status unavailable: {exc}; using gateway port probes",
+            containers=fallback,
         )
 
     by_service = {
@@ -29,14 +34,20 @@ def get_docker_status(project_name: str, monitored_services: Iterable[str]) -> D
 
     result: Dict[str, ContainerStatus] = {}
     for service in services:
-        container = by_service.get(service)
-        if not container:
-            result[service] = _unknown_container(service, "Container not found in Docker project")
-            continue
+        try:
+            container = by_service.get(service)
+            if not container:
+                result[service] = _gateway_probe_container(service) or _unknown_container(
+                    service,
+                    "Container not found in Docker project",
+                )
+                continue
 
-        name = container.get("Names", "")
-        stat = stats.get(name) or stats.get(container.get("ID", ""))
-        result[service] = _build_container_status(service, container, stat)
+            name = container.get("Names", "")
+            stat = stats.get(name) or stats.get(container.get("ID", ""))
+            result[service] = _build_container_status(service, container, stat)
+        except Exception as exc:  # noqa: BLE001
+            result[service] = _unknown_container(service, f"Docker status parse failed: {exc}")
 
     return DockerStatusResponse(project=project_name, available=True, containers=result)
 
@@ -128,3 +139,105 @@ def _unknown_container(service: str, detail: str) -> ContainerStatus:
         status="unknown",
         detail=detail,
     )
+
+
+def _build_gateway_probe_statuses(services: Iterable[str]) -> dict[str, ContainerStatus]:
+    return {
+        service: _safe_gateway_probe_container(service)
+        for service in services
+    }
+
+
+def _safe_gateway_probe_container(service: str) -> ContainerStatus:
+    try:
+        return _gateway_probe_container(service) or _unknown_container(
+            service,
+            "Docker status unavailable and no gateway probe is configured",
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _unknown_container(service, f"Gateway probe failed: {exc}")
+
+
+def _gateway_probe_container(service: str) -> Optional[ContainerStatus]:
+    endpoint = _gateway_probe_endpoint(service)
+    if not endpoint:
+        return None
+
+    host, port = endpoint
+    ok, error = _tcp_probe(host, port)
+    target = f"{host}:{port}"
+    status = "running" if ok else "down"
+    detail = f"Gateway TCP probe {'succeeded' if ok else 'failed'}: {target}"
+    if error:
+        detail = f"{detail}; {error}"
+
+    return ContainerStatus(
+        name=f"gateway-{service}",
+        service=service,
+        status=status,
+        raw_state="remote_probe",
+        raw_status=detail,
+        endpoint=target,
+        detail=detail,
+    )
+
+
+def _gateway_probe_endpoint(service: str) -> Optional[tuple[str, int]]:
+    if service == "kafka":
+        return _host_port_from_bootstrap(getattr(settings, "kafka_bootstrap_servers", ""), default_port=9092)
+    if service == "elasticsearch":
+        return _host_port_from_url(getattr(settings, "elasticsearch_hosts", ""), default_port=9200)
+    if service == "kibana":
+        return _host_port_from_url(getattr(settings, "kibana_base_url", ""), default_port=5601)
+    if service == "logstash":
+        host_port = _host_port_from_bootstrap(getattr(settings, "kafka_bootstrap_servers", ""), default_port=9092)
+        if host_port:
+            return host_port[0], 9600
+    return None
+
+
+def _host_port_from_bootstrap(value: str, *, default_port: int) -> Optional[tuple[str, int]]:
+    first = next((item.strip() for item in value.split(",") if item.strip()), "")
+    if not first:
+        return None
+    if "://" in first:
+        return _host_port_from_url(first, default_port=default_port)
+    if first.startswith("[") and "]" in first:
+        host, _, rest = first[1:].partition("]")
+        port_text = rest[1:] if rest.startswith(":") else ""
+    else:
+        host, _, port_text = first.rpartition(":")
+        if not host:
+            host, port_text = first, ""
+    return _normalize_host_port(host, port_text, default_port=default_port)
+
+
+def _host_port_from_url(value: str, *, default_port: int) -> Optional[tuple[str, int]]:
+    first = next((item.strip() for item in value.split(",") if item.strip()), "")
+    if not first:
+        return None
+    parsed = urlparse(first if "://" in first else f"http://{first}")
+    try:
+        port_text = str(parsed.port or "")
+    except ValueError:
+        port_text = ""
+    return _normalize_host_port(parsed.hostname or "", port_text, default_port=default_port)
+
+
+def _normalize_host_port(host: str, port_text: str, *, default_port: int) -> Optional[tuple[str, int]]:
+    normalized_host = host.strip()
+    if not normalized_host:
+        return None
+    try:
+        port = int(port_text) if port_text else default_port
+    except ValueError:
+        port = default_port
+    return normalized_host, port
+
+
+def _tcp_probe(host: str, port: int) -> tuple[bool, Optional[str]]:
+    try:
+        with socket.create_connection((host, port), timeout=GATEWAY_PROBE_TIMEOUT_SECONDS):
+            return True, None
+    except OSError as exc:
+        return False, str(exc)

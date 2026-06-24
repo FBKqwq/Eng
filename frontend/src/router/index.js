@@ -16,6 +16,10 @@ import AnalysisFunnel from '../views/analysis/funnel.vue'
 import SystemPipeline from '../views/system/pipeline.vue'
 import SystemComponents from '../views/system/components.vue'
 import SystemConfig from '../views/system/config.vue'
+import YwPrediction from '../views/yw/yc/index.vue'
+import YwLogAnalysis from '../views/yw/yy/index.vue'
+import YwRootCause from '../views/yw/yl/index.vue'
+import YwLogQA from '../views/yw/ym/index.vue'
 
 const routes = [
   {
@@ -121,6 +125,30 @@ const routes = [
         meta: { title: '配置快照' }
       },
       // 旧路由重定向
+      {
+        path: 'yw/yc',
+        name: 'yw-prediction',
+        component: YwPrediction,
+        meta: { title: '异常预测中心' }
+      },
+      {
+        path: 'yw/yy',
+        name: 'yw-log-analysis',
+        component: YwLogAnalysis,
+        meta: { title: '智能日志分析' }
+      },
+      {
+        path: 'yw/yl',
+        name: 'yw-root-cause',
+        component: YwRootCause,
+        meta: { title: '智能根因分析' }
+      },
+      {
+        path: 'yw/ym',
+        name: 'yw-log-qa',
+        component: YwLogQA,
+        meta: { title: 'AI日志问答助手' }
+      },
       { path: 'diagnosis', redirect: '/analysis/diagnosis' },
       { path: 'results', redirect: '/analysis/reports' },
       { path: 'system', redirect: '/system/components' }

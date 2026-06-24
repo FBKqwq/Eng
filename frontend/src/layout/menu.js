@@ -26,7 +26,11 @@ export const menuTree = [
       { title: '周期体检报告', path: '/analysis/reports' },
       { title: '预警中心', path: '/analysis/alerts' },
       { title: '调用链路追踪', path: '/analysis/trace' },
-      { title: '业务漏斗洞察', path: '/analysis/funnel' }
+      { title: '业务漏斗洞察', path: '/analysis/funnel' },
+      { title: '异常预测中心', path: '/yw/yc' },
+      { title: '智能日志分析', path: '/yw/yy' },
+      { title: '智能根因分析', path: '/yw/yl' },
+      { title: 'AI日志问答助手', path: '/yw/ym' }
     ]
   },
   {
