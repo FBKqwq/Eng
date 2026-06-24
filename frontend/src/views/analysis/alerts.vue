@@ -77,7 +77,26 @@
     </div>
 
     <section class="page-section">
-      <h2>预警列表</h2>
+      <div class="alerts-list__header">
+        <h2>预警列表</h2>
+        <div v-if="selectedAlertIds.length > 0" class="alerts-list__batch">
+          <span>已选择 {{ selectedAlertIds.length }} 条预警</span>
+          <button
+            type="button"
+            class="batch-btn"
+            @click="handleBatchAck"
+          >
+            批量确认
+          </button>
+          <button
+            type="button"
+            class="batch-btn batch-btn--secondary"
+            @click="clearSelection"
+          >
+            取消选择
+          </button>
+        </div>
+      </div>
       <AlertTable
         :items="items"
         :total="total"
@@ -85,9 +104,11 @@
         :error="listError"
         :selected-id="selectedAlert?.alert_id ?? ''"
         :acking-id="ackingId"
+        :selected-ids="selectedAlertIds"
         @select="handleSelect"
         @ack="handleAck"
         @retry="loadAlerts"
+        @toggle-select="handleToggleSelect"
       />
     </section>
 
@@ -128,6 +149,7 @@ const selectedAlert = ref(null)
 const drawerVisible = ref(false)
 const ackingId = ref('')
 const sessionAckCount = ref(0)
+const selectedAlertIds = ref(new Set())
 
 const relatedReports = ref([])
 const linkCount = ref(0)
@@ -355,6 +377,44 @@ function handleViewTrace(alertId) {
   router.push({ path: '/analysis/trace', query: { alert_id: alertId } })
 }
 
+function handleToggleSelect(alertId) {
+  if (selectedAlertIds.value.has(alertId)) {
+    selectedAlertIds.value.delete(alertId)
+  } else {
+    selectedAlertIds.value.add(alertId)
+  }
+  selectedAlertIds.value = new Set(selectedAlertIds.value)
+}
+
+function clearSelection() {
+  selectedAlertIds.value.clear()
+  selectedAlertIds.value = new Set(selectedAlertIds.value)
+}
+
+async function handleBatchAck() {
+  if (selectedAlertIds.value.size === 0) return
+  
+  const ids = Array.from(selectedAlertIds.value)
+  ackingId.value = 'batch'
+  
+  try {
+    for (const id of ids) {
+      try {
+        await acknowledgeAlert(id)
+        sessionAckCount.value += 1
+      } catch {
+        // 单个失败继续处理其他
+      }
+    }
+    clearSelection()
+    await loadAlerts({ silent: true })
+  } catch (err) {
+    listError.value = err?.error?.message || err?.message || '批量确认失败，请重试'
+  } finally {
+    ackingId.value = ''
+  }
+}
+
 async function loadRelatedReports() {
   try {
     const res = await getRecentReports({ limit: 5 })
@@ -523,6 +583,54 @@ onUnmounted(() => {
   padding: var(--spacing-lg);
   text-align: center;
   color: var(--color-text-muted);
+}
+
+.alerts-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.alerts-list__batch {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.alerts-list__batch span {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.batch-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-xs);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.batch-btn:hover {
+  opacity: 0.9;
+}
+
+.batch-btn--secondary {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.batch-btn--secondary:hover {
+  background: var(--color-surface);
 }
 
 @media (max-width: 768px) {

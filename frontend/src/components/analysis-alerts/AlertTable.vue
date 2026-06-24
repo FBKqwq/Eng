@@ -51,6 +51,14 @@
       <table class="alert-table__grid">
         <thead>
           <tr>
+            <th scope="col" class="alert-table__select-header">
+              <input
+                type="checkbox"
+                class="alert-table__select-all"
+                :checked="filteredItems.length > 0 && filteredItems.every(item => selectedIds?.has(item.alert_id))"
+                @change="handleSelectAll"
+              />
+            </th>
             <th v-for="col in columns" :key="col.key" scope="col">{{ col.label }}</th>
           </tr>
         </thead>
@@ -61,12 +69,21 @@
             class="alert-row"
             :class="{
               'is-selected': row.alert_id === selectedId,
-              'is-active': row.status === 'active'
+              'is-active': row.status === 'active',
+              'is-multi-selected': selectedIds?.has(row.alert_id)
             }"
             tabindex="0"
-            @click="emit('select', row)"
+            @click="handleRowClick(row)"
             @keydown.enter="emit('select', row)"
           >
+            <td class="alert-table__select-cell">
+              <input
+                type="checkbox"
+                class="alert-table__select-box"
+                :checked="selectedIds?.has(row.alert_id)"
+                @click.stop="emit('toggle-select', row.alert_id)"
+              />
+            </td>
             <td>{{ formatAlertType(row.alert_type) }}</td>
             <td>
               <SeverityBadge :level="row.severity" :label="formatSeverity(row.severity)" />
@@ -108,14 +125,26 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
   selectedId: { type: String, default: '' },
-  ackingId: { type: String, default: '' }
+  ackingId: { type: String, default: '' },
+  selectedIds: { type: Set, default: () => new Set() }
 })
 
-const emit = defineEmits(['select', 'ack', 'retry', 'search'])
+const emit = defineEmits(['select', 'ack', 'retry', 'search', 'toggle-select'])
 
 const searchQuery = ref('')
 
 const filteredItems = ref(props.items)
+
+function handleRowClick(row) {
+  emit('select', row)
+}
+
+function handleSelectAll(event) {
+  const checked = event.target.checked
+  filteredItems.value.forEach(item => {
+    emit('toggle-select', item.alert_id)
+  })
+}
 
 function handleSearch() {
   const query = searchQuery.value.toLowerCase().trim()
@@ -287,6 +316,10 @@ function formatStatus(status) {
   background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
+.alert-row.is-multi-selected {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
 .alert-row.is-active td:first-child {
   box-shadow: inset 3px 0 0 var(--color-danger);
 }
@@ -334,6 +367,23 @@ function formatStatus(status) {
 
 .status-tag--resolved {
   color: var(--color-success);
+}
+
+.alert-table__select-header {
+  width: 40px;
+  padding: 10px 8px;
+}
+
+.alert-table__select-cell {
+  width: 40px;
+  padding: 10px 8px;
+}
+
+.alert-table__select-all,
+.alert-table__select-box {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
 }
 
 .alert-table__retry {
