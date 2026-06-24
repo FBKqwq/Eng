@@ -1,8 +1,8 @@
 <template>
   <section class="suggestion-panel page-section">
-    <h2>建议区</h2>
+    <h2 v-if="showTitle">{{ title }}</h2>
 
-    <ul v-if="displayItems.length" class="checklist" role="list">
+    <ul v-if="showChecklist && displayItems.length" class="checklist" role="list">
       <li v-for="(item, index) in displayItems" :key="`${index}-${item}`" class="checklist-item">
         <input
           :id="`suggestion-${index}`"
@@ -17,14 +17,19 @@
         </label>
       </li>
     </ul>
-    <p v-else class="checklist-empty">暂无处置建议</p>
+    <p v-else-if="showChecklist" class="checklist-empty">暂无处置建议</p>
 
-    <p v-if="displayItems.length" class="checklist-note">
+    <p v-if="showChecklist && displayItems.length" class="checklist-note">
       处置勾选仅作为当前页面的本地进度标记
     </p>
 
-    <div class="stage-section">
-      <LangGraphFlow :node-trace="nodeTrace" :degraded="degraded" />
+    <div v-if="showStage" class="stage-section" :class="{ 'stage-section--only': !showChecklist }">
+      <LangGraphFlow
+        :node-trace="nodeTrace"
+        :degraded="degraded"
+        :show-header="showChecklist"
+        :fill="!showChecklist"
+      />
     </div>
   </section>
 </template>
@@ -34,6 +39,10 @@ import { computed, ref, watch } from 'vue'
 import LangGraphFlow from './LangGraphFlow.vue'
 
 const props = defineProps({
+  title: { type: String, default: '建议区' },
+  showTitle: { type: Boolean, default: true },
+  showChecklist: { type: Boolean, default: true },
+  showStage: { type: Boolean, default: true },
   /** 处置建议文案列表 */
   suggestions: { type: Array, default: () => [] },
   /** 分析轨迹，来自 analysis/run 或 report.node_trace */
@@ -128,6 +137,12 @@ function toggleChecked(index) {
   margin-top: var(--spacing-md);
   padding-top: var(--spacing-md);
   border-top: 1px dashed var(--color-border);
+}
+
+.stage-section--only {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
